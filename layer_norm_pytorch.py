@@ -14,7 +14,7 @@ eps = 1E-5
 n_repeats = 5
 
 
-for B in [128*1000]:#[128 * 10, 128 * 100, 128 * 1000]:
+for B in [128*500]:#[128 * 10, 128 * 100, 128 * 500, 128 * 1000]:
     for C in [128]:#[128, 256, 512, 1024, 2048]:
         # WarmUp
         for _ in range(2):
@@ -52,14 +52,14 @@ for B in [128*1000]:#[128 * 10, 128 * 100, 128 * 1000]:
             npy_th_ln_out_data = out_data.cpu().numpy()
             npt.assert_allclose(npy_th_ln_out_data, gt_out, 1E-5, 1E-5)
 
-            # # Test for apex LayerNorm
-            # start = time.time()
-            # with th.no_grad():
-            #     out_data = apex_ln(in_data)
-            # th.cuda.synchronize()
-            # apex_ln_fwd_time += time.time() - start
-            # npy_apex_ln_out_data = out_data.cpu().numpy()
-            # npt.assert_allclose(npy_apex_ln_out_data, gt_out, 1E-5, 1E-5)
+            # Test for apex LayerNorm
+            start = time.time()
+            with th.no_grad():
+                out_data = apex_ln(in_data)
+            th.cuda.synchronize()
+            apex_ln_fwd_time += time.time() - start
+            npy_apex_ln_out_data = out_data.cpu().numpy()
+            npt.assert_allclose(npy_apex_ln_out_data, gt_out, 1E-5, 1E-5)
 
         print('B={}, C={}'.format(B, C))
         print('Torch LayerNorm Time Spent = {} ms'.format(th_ln_fwd_time / n_repeats * 1000))
