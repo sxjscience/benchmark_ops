@@ -14,8 +14,8 @@ eps = 1E-5
 n_repeats = 5
 
 
-for B in [128*500]:#[128 * 10, 128 * 100, 128 * 500, 128 * 1000]:
-    for C in [128]:#[128, 256, 512, 1024, 2048]:
+for B in [128 * 10, 128 * 100, 128 * 500]:#, 128 * 512]:
+    for C in [128, 256, 512, 1024, 2048, 4096]:
         # WarmUp
         for _ in range(2):
             in_data = th.randn(B, C, device=device, dtype=dtype)
@@ -43,6 +43,8 @@ for B in [128*500]:#[128 * 10, 128 * 100, 128 * 500, 128 * 1000]:
             apex_ln.cuda(device)
             th.cuda.synchronize()
 
+            # Profile Forward-only
+
             # Test for torch LayerNorm
             start = time.time()
             with th.no_grad():
@@ -60,6 +62,9 @@ for B in [128*500]:#[128 * 10, 128 * 100, 128 * 500, 128 * 1000]:
             apex_ln_fwd_time += time.time() - start
             npy_apex_ln_out_data = out_data.cpu().numpy()
             npt.assert_allclose(npy_apex_ln_out_data, gt_out, 1E-5, 1E-5)
+
+            # Profile Forward + Backward
+
 
         print('B={}, C={}'.format(B, C))
         print('Torch LayerNorm Time Spent = {} ms'.format(th_ln_fwd_time / n_repeats * 1000))
