@@ -14,8 +14,8 @@ eps = 1E-5
 n_repeats = 5
 
 
-for B in [128 * 10, 128 * 100, 128 * 500]:#, 128 * 512]:
-    for C in [128, 256, 512, 1024, 2048, 4096]:
+for B in [128, 128 * 32, 128 * 100, 128 * 500]:#, 128 * 512]:
+    for C in [128, 256, 512, 1024, 2048]:
         # WarmUp
         for _ in range(2):
             in_data = th.randn(B, C, device=device, dtype=dtype)
@@ -29,6 +29,7 @@ for B in [128 * 10, 128 * 100, 128 * 500]:#, 128 * 512]:
 
         apex_ln_fwd_time = 0
         apex_ln_bwd_time = 0
+
         for _ in range(n_repeats):
             in_data = th.randn(B, C, device=device, dtype=dtype)
             ograd = th.randn(B, C, device=device, dtype=dtype)
@@ -44,7 +45,6 @@ for B in [128 * 10, 128 * 100, 128 * 500]:#, 128 * 512]:
             th.cuda.synchronize()
 
             # Profile Forward-only
-
             # Test for torch LayerNorm
             start = time.time()
             with th.no_grad():
@@ -63,7 +63,11 @@ for B in [128 * 10, 128 * 100, 128 * 500]:#, 128 * 512]:
             npy_apex_ln_out_data = out_data.cpu().numpy()
             npt.assert_allclose(npy_apex_ln_out_data, gt_out, 1E-5, 1E-5)
 
-            # Profile Forward + Backward
+            # Profile Backward
+            in_data.required_grad_(True)
+            start = time.time()
+
+
 
 
         print('B={}, C={}'.format(B, C))
