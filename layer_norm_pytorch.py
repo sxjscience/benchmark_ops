@@ -15,7 +15,7 @@ def print_markdown(df):
 device = th.device('cuda:0')
 dtype = th.float32
 eps = 1E-5
-n_repeats = 3
+n_repeats = 5
 
 
 candidate_B = [128, 128 * 32, 128 * 64, 128 * 128] # The result of apex will be wrong when B >= 128 * 512
