@@ -19,7 +19,7 @@ n_repeats = 3
 
 
 candidate_B = [128, 128 * 32, 128 * 64, 128 * 128] # The result of apex will be wrong when B >= 128 * 512
-candidate_C = [128, 256, 512, 1024, 2048]
+candidate_C = [128, 256, 512, 768, 1024]
 fwd_only_time_d = {}
 fwd_time_d = {}
 bwd_time_d = {}
@@ -33,12 +33,12 @@ for key in ['th', 'apex']:
                                    index=candidate_B, columns=candidate_C)
 for B in candidate_B:
     for C in candidate_C:
-        # WarmUp
-        for _ in range(2):
-            in_data = th.randn(B, C, device=device, dtype=dtype)
-            out_data = in_data * in_data
-            npy_out_data = out_data.cpu().numpy()
         for key in ['th', 'apex']:
+            # WarmUp
+            for _ in range(2):
+                in_data = th.randn(B, C, device=device, dtype=dtype)
+                out_data = in_data * in_data
+                npy_out_data = out_data.cpu().numpy()
             if key == 'th':
                 layer = nn.LayerNorm(in_data.size()[1:], eps=eps)
             elif key == 'apex':
@@ -46,6 +46,7 @@ for B in candidate_B:
             else:
                 raise NotImplementedError
             layer.cuda(device)
+            th.cuda.synchronize()
             fwd_only_time = 0
             fwd_time = 0
             bwd_time = 0
@@ -76,9 +77,9 @@ for B in candidate_B:
                     out_data.backward([ograd])
                     th.cuda.synchronize()
                     bwd_time += time.time() - start
-            fwd_only_time_d[key].set_value(B, C, fwd_only_time / n_repeats * 1000000)
-            fwd_time_d[key].set_value(B, C, fwd_time / n_repeats * 1000000)
-            bwd_time_d[key].set_value(B, C, bwd_time / n_repeats * 1000000)
+            fwd_only_time_d[key].at[B, C] = fwd_only_time / n_repeats * 1000000
+            fwd_time_d[key].at[B, C] = fwd_time / n_repeats * 1000000
+            bwd_time_d[key].at[B, C] = bwd_time / n_repeats * 1000000
             print('B={}, C={}'.format(B, C))
             print('LayeNorm = {}'.format(key))
             print('   fwd-only = {} ms, fwd = {} ms, bwd = {} ms'.format(fwd_only_time / n_repeats * 1000000,
@@ -87,11 +88,11 @@ for B in candidate_B:
 print('PyTorch LayerNorm Forward ')
 print(fwd_time_d['th'])
 
-print('Apex LayerNorm Forward')
-print(fwd_time_d['apex'])
-
 print('PyTorch LayerNorm Backward ')
 print(bwd_time_d['th'])
+
+print('Apex LayerNorm Forward')
+print(fwd_time_d['apex'])
 
 print('Apex LayerNorm Backward')
 print(bwd_time_d['apex'])
