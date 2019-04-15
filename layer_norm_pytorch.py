@@ -3,73 +3,95 @@ from torch import nn
 import numpy as np
 import time
 import numpy.testing as npt
+import pandas as pd
 from apex.normalization.fused_layer_norm import FusedLayerNorm
 
 
+
+def print_markdown(df):
+    pass
 
 
 device = th.device('cuda:0')
 dtype = th.float32
 eps = 1E-5
-n_repeats = 5
+n_repeats = 3
 
 
-for B in [128, 128 * 32, 128 * 100, 128 * 500]:#, 128 * 512]:
-    for C in [128, 256, 512, 1024, 2048]:
+candidate_B = [128, 128 * 32, 128 * 64, 128 * 128] # The result of apex will be wrong when B >= 128 * 512
+candidate_C = [128, 256, 512, 1024, 2048]
+fwd_only_time_d = {}
+fwd_time_d = {}
+bwd_time_d = {}
+
+for key in ['th', 'apex']:
+    fwd_only_time_d[key] = pd.DataFrame(np.zeros(shape=(len(candidate_B), len(candidate_C)), dtype=np.float64),
+                                        index=candidate_B, columns=candidate_C)
+    fwd_time_d[key] = pd.DataFrame(np.zeros(shape=(len(candidate_B), len(candidate_C)), dtype=np.float64),
+                                   index=candidate_B, columns=candidate_C)
+    bwd_time_d[key] = pd.DataFrame(np.zeros(shape=(len(candidate_B), len(candidate_C)), dtype=np.float64),
+                                   index=candidate_B, columns=candidate_C)
+for B in candidate_B:
+    for C in candidate_C:
         # WarmUp
         for _ in range(2):
             in_data = th.randn(B, C, device=device, dtype=dtype)
             out_data = in_data * in_data
             npy_out_data = out_data.cpu().numpy()
+        for key in ['th', 'apex']:
+            if key == 'th':
+                layer = nn.LayerNorm(in_data.size()[1:], eps=eps)
+            elif key == 'apex':
+                layer = FusedLayerNorm(in_data.size()[1:], eps=eps)
+            else:
+                raise NotImplementedError
+            layer.cuda(device)
+            fwd_only_time = 0
+            fwd_time = 0
+            bwd_time = 0
+            for _ in range(n_repeats):
+                in_data = th.randn(B, C, device=device, dtype=dtype, requires_grad=True)
+                ograd = th.randn(B, C, device=device, dtype=dtype)
+                npy_in_data = in_data.cpu().detach().numpy()
+                gt_out = (npy_in_data - npy_in_data.mean(axis=-1, keepdims=True))\
+                          / np.sqrt(npy_in_data.var(axis=-1, keepdims=True) + eps)
+                th.cuda.synchronize()
 
+                # Profile Forward-only
+                start = time.time()
+                with th.no_grad():
+                    out_data = layer(in_data)
+                th.cuda.synchronize()
+                fwd_only_time += time.time() - start
+                npy_th_out_data = out_data.cpu().numpy()
+                npt.assert_allclose(npy_th_out_data, gt_out, 1E-5, 1E-5)
 
-        # Calculate
-        th_ln_fwd_time = 0
-        th_ln_bwd_time = 0
+                # Profile Forward + Backward
+                with th.enable_grad():
+                    start = time.time()
+                    out_data = layer(in_data)
+                    th.cuda.synchronize()
+                    fwd_time += time.time() - start
+                    start = time.time()
+                    out_data.backward([ograd])
+                    th.cuda.synchronize()
+                    bwd_time += time.time() - start
+            fwd_only_time_d[key].set_value(B, C, fwd_only_time / n_repeats * 1000000)
+            fwd_time_d[key].set_value(B, C, fwd_time / n_repeats * 1000000)
+            bwd_time_d[key].set_value(B, C, bwd_time / n_repeats * 1000000)
+            print('B={}, C={}'.format(B, C))
+            print('LayeNorm = {}'.format(key))
+            print('   fwd-only = {} ms, fwd = {} ms, bwd = {} ms'.format(fwd_only_time / n_repeats * 1000000,
+                                                                         fwd_time / n_repeats * 1000000,
+                                                                         bwd_time / n_repeats * 1000000))
+print('PyTorch LayerNorm Forward ')
+print(fwd_time_d['th'])
 
-        apex_ln_fwd_time = 0
-        apex_ln_bwd_time = 0
+print('Apex LayerNorm Forward')
+print(fwd_time_d['apex'])
 
-        for _ in range(n_repeats):
-            in_data = th.randn(B, C, device=device, dtype=dtype)
-            ograd = th.randn(B, C, device=device, dtype=dtype)
-            npy_in_data = in_data.cpu().numpy()
-            gt_out = (npy_in_data - npy_in_data.mean(axis=-1, keepdims=True))\
-                     / np.sqrt(npy_in_data.var(axis=-1, keepdims=True) + eps)
+print('PyTorch LayerNorm Backward ')
+print(bwd_time_d['th'])
 
-            th.cuda.synchronize()
-            th_ln = nn.LayerNorm(in_data.size()[1:], eps=eps)
-            th_ln.cuda(device)
-            apex_ln = FusedLayerNorm(in_data.size()[1:], eps=eps)
-            apex_ln.cuda(device)
-            th.cuda.synchronize()
-
-            # Profile Forward-only
-            # Test for torch LayerNorm
-            start = time.time()
-            with th.no_grad():
-                out_data = th_ln(in_data)
-            th.cuda.synchronize()
-            th_ln_fwd_time += time.time() - start
-            npy_th_ln_out_data = out_data.cpu().numpy()
-            npt.assert_allclose(npy_th_ln_out_data, gt_out, 1E-5, 1E-5)
-
-            # Test for apex LayerNorm
-            start = time.time()
-            with th.no_grad():
-                out_data = apex_ln(in_data)
-            th.cuda.synchronize()
-            apex_ln_fwd_time += time.time() - start
-            npy_apex_ln_out_data = out_data.cpu().numpy()
-            npt.assert_allclose(npy_apex_ln_out_data, gt_out, 1E-5, 1E-5)
-
-            # Profile Backward
-            in_data.required_grad_(True)
-            start = time.time()
-
-
-
-
-        print('B={}, C={}'.format(B, C))
-        print('Torch LayerNorm Time Spent = {} ms'.format(th_ln_fwd_time / n_repeats * 1000))
-        print('Torch Apex LayerNorm Time Spent = {} ms'.format(apex_ln_fwd_time / n_repeats * 1000))
+print('Apex LayerNorm Backward')
+print(bwd_time_d['apex'])
