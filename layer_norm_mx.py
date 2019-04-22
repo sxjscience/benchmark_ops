@@ -48,6 +48,7 @@ for B in candidate_B:
                 mx.nd.waitall()
                 # Profile Forward + Backward
                 with mx.autograd.record():
+                    mx.nd.waitall()
                     start = time.time()
                     out_data = ln_layer(in_data)
                     mx.nd.waitall()
