@@ -18,8 +18,8 @@ eps = 1E-5
 n_repeats = 5
 
 
-candidate_B = [128, 128 * 32, 128 * 64, 128 * 128] # The result of apex will be wrong when B >= 128 * 512
-candidate_C = [128, 256, 512, 768, 1024]
+candidate_B = [128, 128 * 32, 320 * 20, 128 * 64, 128 * 128] # The result of apex is wrong when B >= 128 * 512
+candidate_C = [32, 60, 128, 256, 512, 768, 1024]
 fwd_only_time_d = {}
 fwd_time_d = {}
 bwd_time_d = {}
