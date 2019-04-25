@@ -10,8 +10,8 @@ dtype = np.float32
 eps = 1E-5
 n_repeats = 5
 
-candidate_B = [128, 128 * 32, 320 * 20, 128 * 64, 128 * 128]
-candidate_C = [32, 60, 128, 256, 512, 768, 1024]
+candidate_B = [128 * 32]#[128, 128 * 32, 128 * 64, 128 * 128]
+candidate_C = [256] #[32, 64, 128, 256, 512, 768, 1024]
 fwd_time_d = {}
 bwd_time_d = {}
 
@@ -51,8 +51,9 @@ for B in candidate_B:
                     mx.nd.waitall()
                     start = time.time()
                     out_data = ln_layer(in_data)
-                    mx.nd.waitall()
+                    out_data.wait_to_read()
                     fwd_time += time.time() - start
+                    mx.nd.waitall()
                     start = time.time()
                     out_data.backward(ograd)
                     mx.nd.waitall()
