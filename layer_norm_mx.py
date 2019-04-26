@@ -30,6 +30,7 @@ for B in candidate_B:
                 ln_layer = nn.LayerNorm(epsilon=eps)
             else:
                 raise NotImplementedError
+            ln_layer.hybridize()
             ln_layer.initialize(ctx=ctx)
             for _ in range(2):
                 in_data = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
