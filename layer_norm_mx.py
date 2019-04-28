@@ -61,6 +61,7 @@ for B in candidate_B:
                 gt_in_data_grad, gt_gamma_grad, gt_beta_grad =\
                     npy_ln_grad(in_data.asnumpy(), ograd.asnumpy(), eps, ln_layer.params.get('gamma').data().asnumpy())
                 mx.nd.waitall()
+                in_data.attach_grad()
                 # Profile Forward + Backward
                 with mx.autograd.record():
                     mx.nd.waitall()
