@@ -16,6 +16,18 @@ fwd_time_d = {}
 bwd_time_d = {}
 
 
+
+def npy_ln_grad(in_data, ograd, eps, gamma):
+    data_mean = in_data.mean(axis=-1, keepdims=True)
+    data_std = np.sqrt(in_data.var(axis=-1, keepdims=True) + eps)
+    centered_data = (in_data - data_mean) / data_std
+    gamma_grad = (centered_data * ograd).sum(axis=0)
+    beta_grad = ograd.sum(axis=0)
+    w = ograd * gamma / data_std
+    in_data_grad = w - w.mean(axis=-1, keepdims=True) - centered_data * (w * centered_data).mean(axis=-1, keepdims=True)
+    return in_data_grad, gamma_grad, beta_grad
+
+
 for key in ['ln']:
     fwd_time_d[key] = pd.DataFrame(np.zeros(shape=(len(candidate_B), len(candidate_C)), dtype=np.float64),
                                    index=candidate_B, columns=candidate_C)
@@ -46,6 +58,8 @@ for B in candidate_B:
                 npy_in_data = in_data.asnumpy()
                 gt_out = (npy_in_data - npy_in_data.mean(axis=-1, keepdims=True)) \
                          / np.sqrt(npy_in_data.var(axis=-1, keepdims=True) + eps)
+                gt_in_data_grad, gt_gamma_grad, gt_beta_grad =\
+                    npy_ln_grad(in_data, ograd, eps, ln_layer.params.get('gamma').data().asnumpy())
                 mx.nd.waitall()
                 # Profile Forward + Backward
                 with mx.autograd.record():
@@ -60,6 +74,9 @@ for B in candidate_B:
                     mx.nd.waitall()
                     bwd_time += time.time() - start
                 npt.assert_allclose(out_data.asnumpy(), gt_out, 1E-5, 1E-5)
+                npt.assert_allclose(in_data.grad.asnumpy(), gt_in_data_grad, 1E-5, 1E-5)
+                npt.assert_allclose(ln_layer.params.get('gamma').data().grad.asnumpy(), gt_gamma_grad, 1E-5, 1E-5)
+                npt.assert_allclose(ln_layer.params.get('beta').data().grad.asnumpy(), gt_beta_grad, 1E-5, 1E-5)
             fwd_time_d[key].at[B, C] = fwd_time / n_repeats * 1000000
             bwd_time_d[key].at[B, C] = bwd_time / n_repeats * 1000000
             print('B={}, C={}'.format(B, C))
