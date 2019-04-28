@@ -59,7 +59,7 @@ for B in candidate_B:
                 gt_out = (npy_in_data - npy_in_data.mean(axis=-1, keepdims=True)) \
                          / np.sqrt(npy_in_data.var(axis=-1, keepdims=True) + eps)
                 gt_in_data_grad, gt_gamma_grad, gt_beta_grad =\
-                    npy_ln_grad(in_data, ograd, eps, ln_layer.params.get('gamma').data().asnumpy())
+                    npy_ln_grad(in_data.asnumpy(), ograd.asnumpy(), eps, ln_layer.params.get('gamma').data().asnumpy())
                 mx.nd.waitall()
                 # Profile Forward + Backward
                 with mx.autograd.record():
