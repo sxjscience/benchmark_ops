@@ -110,6 +110,7 @@ for B in candidate_B:
                     s = io.StringIO()
                     ps = pstats.Stats(pr, stream=s).sort_stats('cumulative'	)
                     ps.print_stats()
+                    print(s.getvalue())
                 # Debug
                 npy_gamma = nd_gamma.asnumpy()
                 npy_beta = nd_beta.asnumpy()
