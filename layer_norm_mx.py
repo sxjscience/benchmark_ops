@@ -109,7 +109,7 @@ for B in candidate_B:
                     pr.disable()
                     s = io.StringIO()
                     ps = pstats.Stats(pr, stream=s).sort_stats('cumulative'	)
-                    ps.print_stats()
+                    ps.print_stats(15)
                     print(s.getvalue())
                 # Debug
                 npy_gamma = nd_gamma.asnumpy()
