@@ -4,6 +4,11 @@ import numpy as np
 import numpy.testing as npt
 import time
 import pandas as pd
+import argparse
+import cProfile
+import io
+import pstats
+
 
 ctx = mx.gpu(0)
 dtype = np.float32
@@ -14,6 +19,10 @@ candidate_B = [128 * 32]#[128, 128 * 32, 128 * 64, 128 * 128]
 candidate_C = [256] #[32, 64, 128, 256, 512, 768, 1024]
 fwd_time_d = {}
 bwd_time_d = {}
+
+parser = argparse.ArgumentParser(description='Profile LayerNorm using MXNet.')
+parser.add_argument('python_profile', action='store_true', help='an integer for the accumulator')
+args = parser.parse_args()
 
 
 def nd_layer_norm(data, gamma, beta, axis, eps):
@@ -80,6 +89,9 @@ for B in candidate_B:
                 nd_beta.attach_grad()
                 mx.nd.waitall()
                 # Profile Forward + Backward
+                if args.python_profile:
+                    pr = cProfile.Profile()
+                    pr.enable()
                 with mx.autograd.record():
                     mx.nd.waitall()
                     start = time.time()
@@ -93,6 +105,11 @@ for B in candidate_B:
                     out_data.backward(ograd)
                     mx.nd.waitall()
                     bwd_time += time.time() - start
+                if args.python_profile:
+                    pr.disable()
+                    s = io.StringIO()
+                    ps = pstats.Stats(pr, stream=s).sort_stats('cumulative'	)
+                    ps.print_stats()
                 # Debug
                 npy_gamma = nd_gamma.asnumpy()
                 npy_beta = nd_beta.asnumpy()
