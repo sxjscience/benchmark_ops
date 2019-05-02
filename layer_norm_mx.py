@@ -105,7 +105,6 @@ for B in candidate_B:
                 npt.assert_allclose(mean_val.asnumpy()[:, 0], npy_in_data.mean(axis=-1), 1E-5, 1E-5)
                 npt.assert_allclose(std_val.asnumpy()[:, 0], np.sqrt(npy_in_data.var(axis=-1) + eps), 1E-5, 1E-5)
                 npt.assert_allclose(out_data.asnumpy(), gt_out, 1E-5, 1E-5)
-                print(np.square(mx_in_data_grad - gt_in_data_grad).sum(axis=-1))
                 for i in range(B):
                     npt.assert_allclose(mx_in_data_grad[i, :], gt_in_data_grad[i, :], 1E-5, 1E-5)
                 # npt.assert_allclose(ln_layer.params.get('gamma').data().grad.asnumpy(), gt_gamma_grad, 1E-5, 1E-5)
