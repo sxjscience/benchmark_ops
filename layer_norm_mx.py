@@ -21,7 +21,7 @@ fwd_time_d = {}
 bwd_time_d = {}
 
 parser = argparse.ArgumentParser(description='Profile LayerNorm using MXNet.')
-parser.add_argument('python_profile', action='store_true', help='an integer for the accumulator')
+parser.add_argument('--python_profile', action='store_true', help='an integer for the accumulator')
 args = parser.parse_args()
 
 
