@@ -116,7 +116,7 @@ for B in candidate_B:
             bwd_time_d[key].at[B, C] = bwd_time / n_repeats * 1000000
             print('B={}, C={}'.format(B, C))
             print('LayeNorm = {}'.format(key))
-            print('   fwd = {} ms, bwd = {} ms'.format(fwd_time / n_repeats * 1000000,
+            print('   fwd = {} us, bwd = {} us'.format(fwd_time / n_repeats * 1000000,
                                                        bwd_time / n_repeats * 1000000))
 
 print('MXNet LayerNorm Forward:')
