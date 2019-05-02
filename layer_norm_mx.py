@@ -78,6 +78,7 @@ for B in candidate_B:
                 in_data.attach_grad()
                 nd_gamma.attach_grad()
                 nd_beta.attach_grad()
+                mx.nd.waitall()
                 # Profile Forward + Backward
                 with mx.autograd.record():
                     mx.nd.waitall()
