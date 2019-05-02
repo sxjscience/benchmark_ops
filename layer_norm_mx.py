@@ -97,28 +97,28 @@ for B in candidate_B:
                 nd_beta.attach_grad()
                 mx.nd.waitall()
                 # Profile Forward + Backward
-                if args.python_profile:
-                    pr = cProfile.Profile()
-                    pr.enable()
                 with mx.autograd.record():
                     mx.nd.waitall()
+                    if args.python_profile:
+                        pr = cProfile.Profile()
+                        pr.enable()
                     start = time.time()
                     # out_data = ln_layer(in_data)
                     out_data, mean_val, std_val = mx.nd.LayerNorm(in_data, gamma=nd_gamma, beta=nd_beta, axis=-1, eps=eps, output_mean_var=True)
                     #out_data, mean_val, std_val = nd_layer_norm(in_data, gamma=nd_gamma, beta=nd_beta, axis=-1, eps=eps)
                     out_data.wait_to_read()
                     fwd_time += time.time() - start
+                    if args.python_profile:
+                        pr.disable()
+                        s = io.StringIO()
+                        ps = pstats.Stats(pr, stream=s).sort_stats('cumulative')
+                        ps.print_stats(15)
+                        print(s.getvalue())
                     mx.nd.waitall()
                     start = time.time()
                     out_data.backward(ograd)
                     mx.nd.waitall()
                     bwd_time += time.time() - start
-                if args.python_profile:
-                    pr.disable()
-                    s = io.StringIO()
-                    ps = pstats.Stats(pr, stream=s).sort_stats('cumulative'	)
-                    ps.print_stats(15)
-                    print(s.getvalue())
                 # Debug
                 npy_gamma = nd_gamma.asnumpy()
                 npy_beta = nd_beta.asnumpy()
