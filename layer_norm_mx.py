@@ -25,6 +25,14 @@ parser.add_argument('--python_profile', action='store_true', help='an integer fo
 args = parser.parse_args()
 
 
+def f8(x):
+    ret = "%8.3f" % x
+    if ret != '   0.000':
+        return ret
+    return "%6dµs" % (x * 10000000)
+
+pstats.f8 = f8
+
 def nd_layer_norm(data, gamma, beta, axis, eps):
     nd_mean = mx.nd.mean(data, axis=-1, keepdims=True)
     nd_var = mx.nd.mean(mx.nd.square(mx.nd.broadcast_minus(data, nd_mean)), axis=axis, keepdims=True)
