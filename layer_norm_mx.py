@@ -29,7 +29,7 @@ def f8(x):
     ret = "%8.3f" % x
     if ret != '   0.000':
         return ret
-    return "%6dµs" % (x * 10000000)
+    return "%6dµs" % (x * 1000000)
 
 pstats.f8 = f8
 
@@ -105,7 +105,7 @@ for B in candidate_B:
                     start = time.time()
                     # out_data = ln_layer(in_data)
                     out_data, mean_val, std_val = mx.nd.LayerNorm(in_data, gamma=nd_gamma, beta=nd_beta, axis=-1, eps=eps, output_mean_var=True)
-                    #out_data, mean_val, std_val = nd_layer_norm(in_data, gamma=nd_gamma, beta=nd_beta, axis=-1, eps=eps)
+                    # out_data, mean_val, std_val = nd_layer_norm(in_data, gamma=nd_gamma, beta=nd_beta, axis=-1, eps=eps)
                     out_data.wait_to_read()
                     fwd_time += time.time() - start
                     if args.python_profile:
