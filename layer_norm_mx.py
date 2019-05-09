@@ -9,6 +9,8 @@ import cProfile
 import io
 import pstats
 
+np.random.seed(123)
+mx.random.seed(123)
 
 ctx = mx.gpu(0)
 dtype = np.float32
