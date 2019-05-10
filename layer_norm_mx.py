@@ -18,7 +18,7 @@ eps = 1E-5
 n_repeats = 5
 
 candidate_B = [128 * 32]#[128, 128 * 32, 128 * 64, 128 * 128]
-candidate_C = [256] #[32, 64, 128, 256, 512, 768, 1024]
+candidate_C = [1024] #[32, 64, 128, 256, 512, 768, 1024]
 fwd_time_d = {}
 bwd_time_d = {}
 
@@ -149,7 +149,7 @@ for B in candidate_B:
                     npt.assert_allclose(mx_in_data_grad[i, :], gt_in_data_grad[i, :], 1E-5, 1E-5)
                 # npt.assert_allclose(ln_layer.params.get('gamma').data().grad.asnumpy(), gt_gamma_grad, 1E-5, 1E-5)
                 # npt.assert_allclose(ln_layer.params.get('beta').data().grad.asnumpy(), gt_beta_grad, 1E-5, 1E-5)
-                npt.assert_allclose(nd_gamma.grad.asnumpy(), gt_gamma_grad, 1E-4, 1E-4)
+                npt.assert_allclose(nd_gamma.grad.asnumpy(), gt_gamma_grad, 1E-3, 1E-3)
                 npt.assert_allclose(nd_beta.grad.asnumpy(), gt_beta_grad, 1E-3, 1E-3)
             fwd_time_d[key].at[B, C] = fwd_time / n_repeats * 1000000
             bwd_time_d[key].at[B, C] = bwd_time / n_repeats * 1000000
