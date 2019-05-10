@@ -6,6 +6,8 @@ import numpy.testing as npt
 import pandas as pd
 from apex.normalization.fused_layer_norm import FusedLayerNorm
 
+th.manual_seed(123)
+np.random.seed(123)
 
 
 def print_markdown(df):
@@ -46,6 +48,8 @@ for B in candidate_B:
             else:
                 raise NotImplementedError
             layer.cuda(device)
+            if dtype == th.float16:
+                layer.half()
             th.cuda.synchronize()
             fwd_only_time = 0
             fwd_time = 0

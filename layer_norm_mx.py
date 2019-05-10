@@ -13,7 +13,7 @@ np.random.seed(123)
 mx.random.seed(123)
 
 ctx = mx.gpu(0)
-dtype = np.float32
+
 eps = 1E-5
 n_repeats = 5
 
@@ -24,7 +24,18 @@ bwd_time_d = {}
 
 parser = argparse.ArgumentParser(description='Profile LayerNorm using MXNet.')
 parser.add_argument('--python_profile', action='store_true', help='an integer for the accumulator')
+parser.add_argument('--nbatch', default=None, help='The number of batches for testing')
+parser.add_argument('--nchannel', default=None, help='The number of channels for testing')
+parser.add_argument('--dtype', default='float32', help='The data type to use')
 args = parser.parse_args()
+if args.dtype == 'float32':
+    dtype = np.float32
+elif args.dtype == 'float64':
+    dtype = np.float64
+elif args.dtype == 'float16':
+    dtype = np.float16
+else:
+    raise NotImplementedError
 
 
 def f8(x):
