@@ -12,7 +12,7 @@ import io
 np.random.seed(123)
 mx.random.seed(123)
 
-ctx = mx.gpu(0)
+
 
 eps = 1E-5
 N_REPEAT = 5
@@ -23,12 +23,16 @@ N_REPEAT = 5
 # bwd_time_d = {}
 
 parser = argparse.ArgumentParser(description='Profile LayerNorm using MXNet.')
-parser.add_argument('--gpu', default=None, help='The number of')
+parser.add_argument('--ctx', default='gpu0', help='The number of')
 parser.add_argument('--nbatch', default=128 * 32, help='The number of batches for testing')
 parser.add_argument('--nchannel', default=1024, help='The number of channels for testing')
 parser.add_argument('--nrepeat', default=5, help='Number to repeat the ')
 parser.add_argument('--dtype', default='float32', help='The data type to use')
 parser.add_argument('--profile', default=False, help='Whether to profile the code using CProfile')
+
+
+
+ctx = mx.gpu(0)
 args = parser.parse_args()
 if args.dtype == 'float32':
     dtype = np.float32
@@ -42,8 +46,6 @@ else:
 if args.profile:
     import cProfile
     import pstats
-
-
     def f8(x):
         ret = "%8.3f" % x
         if ret != '   0.000':
@@ -102,6 +104,9 @@ def check_ln_speed(nbatch, nchannel, nrepeat):
         nd_beta.attach_grad()
         mx.nd.waitall()
         # Profile Forward + Backward
+        if args.profile:
+            pr = cProfile.Profile()
+            pr.enable()
         with mx.autograd.record():
             mx.nd.waitall()
             start = time.time()
@@ -114,6 +119,12 @@ def check_ln_speed(nbatch, nchannel, nrepeat):
             out_data.backward(ograd)
             mx.nd.waitall()
             bwd_time += time.time() - start
+        if args.profile:
+            pr.disable()
+            s = io.StringIO()
+            ps = pstats.Stats(pr, stream=s).sort_stats('cumulative')
+            ps.print_stats(15)
+            print(s.getvalue())
         mx_in_data_grad = in_data.grad.asnumpy()
         mx_gamma_grad = nd_gamma.grad.asnumpy()
         mx_beta_grad = nd_beta.grad.asnumpy()
