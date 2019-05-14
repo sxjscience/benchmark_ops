@@ -5,9 +5,9 @@ import numpy.testing as npt
 import time
 import pandas as pd
 import argparse
-import cProfile
 import io
-import pstats
+
+
 
 np.random.seed(123)
 mx.random.seed(123)
@@ -15,18 +15,20 @@ mx.random.seed(123)
 ctx = mx.gpu(0)
 
 eps = 1E-5
-n_repeats = 5
+N_REPEAT = 5
 
-candidate_B = [128 * 32]#[128, 128 * 32, 128 * 64, 128 * 128]
-candidate_C = [1024] #[32, 64, 128, 256, 512, 768, 1024]
-fwd_time_d = {}
-bwd_time_d = {}
+# candidate_B = [128 * 32]#[128, 128 * 32, 128 * 64, 128 * 128]
+# candidate_C = [1024] #[32, 64, 128, 256, 512, 768, 1024]
+# fwd_time_d = {}
+# bwd_time_d = {}
 
 parser = argparse.ArgumentParser(description='Profile LayerNorm using MXNet.')
-parser.add_argument('--python_profile', action='store_true', help='an integer for the accumulator')
-parser.add_argument('--nbatch', default=None, help='The number of batches for testing')
-parser.add_argument('--nchannel', default=None, help='The number of channels for testing')
+parser.add_argument('--gpu', default=None, help='The number of')
+parser.add_argument('--nbatch', default=128 * 32, help='The number of batches for testing')
+parser.add_argument('--nchannel', default=1024, help='The number of channels for testing')
+parser.add_argument('--nrepeat', default=5, help='Number to repeat the ')
 parser.add_argument('--dtype', default='float32', help='The data type to use')
+parser.add_argument('--profile', default=False, help='Whether to profile the code using CProfile')
 args = parser.parse_args()
 if args.dtype == 'float32':
     dtype = np.float32
@@ -37,14 +39,20 @@ elif args.dtype == 'float16':
 else:
     raise NotImplementedError
 
+if args.profile:
+    import cProfile
+    import pstats
 
-def f8(x):
-    ret = "%8.3f" % x
-    if ret != '   0.000':
-        return ret
-    return "%6dµs" % (x * 1000000)
 
-pstats.f8 = f8
+    def f8(x):
+        ret = "%8.3f" % x
+        if ret != '   0.000':
+            return ret
+        return "%6dµs" % (x * 1000000)
+
+
+    pstats.f8 = f8
+
 
 def nd_layer_norm(data, gamma, beta, axis, eps):
     nd_mean = mx.nd.mean(data, axis=-1, keepdims=True)
@@ -65,101 +73,60 @@ def npy_ln_grad(in_data, ograd, eps, gamma):
     return in_data_grad, gamma_grad, beta_grad
 
 
-for key in ['ln']:
-    fwd_time_d[key] = pd.DataFrame(np.zeros(shape=(len(candidate_B), len(candidate_C)), dtype=np.float64),
-                                   index=candidate_B, columns=candidate_C)
-    bwd_time_d[key] = pd.DataFrame(np.zeros(shape=(len(candidate_B), len(candidate_C)), dtype=np.float64),
-                                   index=candidate_B, columns=candidate_C)
-
-for B in candidate_B:
-    for C in candidate_C:
-        # WarmUp
-        for key in ['ln']:
-            # if key == 'ln':
-            #     ln_layer = nn.LayerNorm(epsilon=eps)
-            # else:
-            #     raise NotImplementedError
-            # ln_layer.hybridize()
-            # ln_layer.initialize(ctx=ctx)
-            for _ in range(2):
-                in_data = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
-                nd_gamma = mx.nd.ones(shape=(C,), ctx=ctx, dtype=dtype)
-                nd_beta = mx.nd.zeros(shape=(C,), ctx=ctx, dtype=dtype)
-                out_data = in_data * in_data
-                #out_data = ln_layer(out_data)
-                out_data = mx.nd.LayerNorm(out_data, gamma=nd_gamma, beta=nd_beta, axis=-1, eps=eps)
-                npy_out_data = out_data.asnumpy()
+def check_ln_speed(nbatch, nchannel, nrepeat):
+    B, C = nbatch, nchannel
+    for _ in range(2):
+        in_data = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
+        nd_gamma = mx.nd.ones(shape=(C,), ctx=ctx, dtype=dtype)
+        nd_beta = mx.nd.zeros(shape=(C,), ctx=ctx, dtype=dtype)
+        out_data = in_data * in_data
+        # out_data = ln_layer(out_data)
+        out_data = mx.nd.LayerNorm(out_data, gamma=nd_gamma, beta=nd_beta, axis=-1, eps=eps)
+        npy_out_data = out_data.asnumpy()
+    mx.nd.waitall()
+    fwd_time = 0
+    bwd_time = 0
+    for _ in range(nrepeat):
+        in_data = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
+        ograd = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
+        nd_gamma = mx.nd.ones(shape=(C,), ctx=ctx, dtype=dtype)
+        nd_beta = mx.nd.zeros(shape=(C,), ctx=ctx, dtype=dtype)
+        npy_in_data = in_data.asnumpy()
+        gt_out = (npy_in_data - npy_in_data.mean(axis=-1, keepdims=True)) \
+                 / np.sqrt(npy_in_data.var(axis=-1, keepdims=True) + eps)
+        gt_in_data_grad, gt_gamma_grad, gt_beta_grad = \
+            npy_ln_grad(in_data.asnumpy(), ograd.asnumpy(), eps, nd_gamma.asnumpy())
+        mx.nd.waitall()
+        in_data.attach_grad()
+        nd_gamma.attach_grad()
+        nd_beta.attach_grad()
+        mx.nd.waitall()
+        # Profile Forward + Backward
+        with mx.autograd.record():
             mx.nd.waitall()
-            fwd_time = 0
-            bwd_time = 0
-            for _ in range(n_repeats):
-                in_data = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
-                ograd = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
-                nd_gamma = mx.nd.ones(shape=(C,), ctx=ctx, dtype=dtype)
-                nd_beta = mx.nd.zeros(shape=(C,), ctx=ctx, dtype=dtype)
-                npy_in_data = in_data.asnumpy()
-                gt_out = (npy_in_data - npy_in_data.mean(axis=-1, keepdims=True)) \
-                         / np.sqrt(npy_in_data.var(axis=-1, keepdims=True) + eps)
-                # gt_in_data_grad, gt_gamma_grad, gt_beta_grad =\
-                #     npy_ln_grad(in_data.asnumpy(), ograd.asnumpy(), eps, ln_layer.params.get('gamma').data().asnumpy())
-                gt_in_data_grad, gt_gamma_grad, gt_beta_grad = \
-                    npy_ln_grad(in_data.asnumpy(), ograd.asnumpy(), eps, nd_gamma.asnumpy())
-                mx.nd.waitall()
-                in_data.attach_grad()
-                nd_gamma.attach_grad()
-                nd_beta.attach_grad()
-                mx.nd.waitall()
-                # Profile Forward + Backward
-                with mx.autograd.record():
-                    mx.nd.waitall()
-                    if args.python_profile:
-                        pr = cProfile.Profile()
-                        pr.enable()
-                    start = time.time()
-                    # out_data = ln_layer(in_data)
-                    out_data, mean_val, std_val = mx.nd.LayerNorm(in_data, gamma=nd_gamma, beta=nd_beta, axis=-1, eps=eps, output_mean_var=True)
-                    # out_data, mean_val, std_val = nd_layer_norm(in_data, gamma=nd_gamma, beta=nd_beta, axis=-1, eps=eps)
-                    out_data.wait_to_read()
-                    fwd_time += time.time() - start
-                    if args.python_profile:
-                        pr.disable()
-                        s = io.StringIO()
-                        ps = pstats.Stats(pr, stream=s).sort_stats('cumulative')
-                        ps.print_stats(15)
-                        print(s.getvalue())
-                    mx.nd.waitall()
-                    start = time.time()
-                    out_data.backward(ograd)
-                    mx.nd.waitall()
-                    bwd_time += time.time() - start
-                # Debug
-                npy_gamma = nd_gamma.asnumpy()
-                npy_beta = nd_beta.asnumpy()
-                npy_mean = npy_in_data.mean(axis=-1, keepdims=True)
-                npy_std = np.sqrt(npy_in_data.var(axis=-1, keepdims=True) + eps)
-                npy_ograd = ograd.asnumpy()
+            start = time.time()
+            out_data, mean_val, std_val = mx.nd.LayerNorm(in_data, gamma=nd_gamma, beta=nd_beta, axis=-1, eps=eps,
+                                                          output_mean_var=True)
+            out_data.wait_to_read()
+            fwd_time += time.time() - start
+            mx.nd.waitall()
+            start = time.time()
+            out_data.backward(ograd)
+            mx.nd.waitall()
+            bwd_time += time.time() - start
+        mx_in_data_grad = in_data.grad.asnumpy()
+        mx_gamma_grad = nd_gamma.grad.asnumpy()
+        mx_beta_grad = nd_beta.grad.asnumpy()
+        npt.assert_allclose(mean_val.asnumpy()[:, 0], npy_in_data.mean(axis=-1), 1E-5, 1E-5)
+        npt.assert_allclose(std_val.asnumpy()[:, 0], np.sqrt(npy_in_data.var(axis=-1) + eps), 1E-5, 1E-5)
+        npt.assert_allclose(out_data.asnumpy(), gt_out, 1E-5, 1E-5)
+        for i in range(B):
+            npt.assert_allclose(mx_in_data_grad[i, :], gt_in_data_grad[i, :], 1E-5, 1E-5)
+        # npt.assert_allclose(ln_layer.params.get('gamma').data().grad.asnumpy(), gt_gamma_grad, 1E-5, 1E-5)
+        # npt.assert_allclose(ln_layer.params.get('beta').data().grad.asnumpy(), gt_beta_grad, 1E-5, 1E-5)
+        npt.assert_allclose(mx_gamma_grad, gt_gamma_grad, 1E-3, 1E-3)
+        npt.assert_allclose(mx_beta_grad, gt_beta_grad, 1E-3, 1E-3)
+    return fwd_time / nrepeat * 1000000, bwd_time / nrepeat * 1000000
+fwd_time, bwd_time = check_ln_speed(args.nbatch, args.nchannel, args.nrepeat)
 
-                mx_in_data_grad = in_data.grad.asnumpy()
-                mx_gamma_grad = nd_gamma.grad.asnumpy()
-                mx_beta_grad = nd_beta.grad.asnumpy()
-                npt.assert_allclose(mean_val.asnumpy()[:, 0], npy_in_data.mean(axis=-1), 1E-5, 1E-5)
-                npt.assert_allclose(std_val.asnumpy()[:, 0], np.sqrt(npy_in_data.var(axis=-1) + eps), 1E-5, 1E-5)
-                npt.assert_allclose(out_data.asnumpy(), gt_out, 1E-5, 1E-5)
-                for i in range(B):
-                    npt.assert_allclose(mx_in_data_grad[i, :], gt_in_data_grad[i, :], 1E-5, 1E-5)
-                # npt.assert_allclose(ln_layer.params.get('gamma').data().grad.asnumpy(), gt_gamma_grad, 1E-5, 1E-5)
-                # npt.assert_allclose(ln_layer.params.get('beta').data().grad.asnumpy(), gt_beta_grad, 1E-5, 1E-5)
-                npt.assert_allclose(nd_gamma.grad.asnumpy(), gt_gamma_grad, 1E-3, 1E-3)
-                npt.assert_allclose(nd_beta.grad.asnumpy(), gt_beta_grad, 1E-3, 1E-3)
-            fwd_time_d[key].at[B, C] = fwd_time / n_repeats * 1000000
-            bwd_time_d[key].at[B, C] = bwd_time / n_repeats * 1000000
-            print('B={}, C={}'.format(B, C))
-            print('LayeNorm = {}'.format(key))
-            print('   fwd = {} us, bwd = {} us'.format(fwd_time / n_repeats * 1000000,
-                                                       bwd_time / n_repeats * 1000000))
-
-print('MXNet LayerNorm Forward:')
-print(fwd_time_d['ln'])
-
-print('MXNet LayerNorm Backward:')
-print(bwd_time_d['ln'])
+print('Forward: {}us, Backward:{}us'.format(fwd_time, bwd_time))
