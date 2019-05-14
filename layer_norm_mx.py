@@ -6,33 +6,30 @@ import time
 import pandas as pd
 import argparse
 import io
-
-
+import re
 
 np.random.seed(123)
 mx.random.seed(123)
 
 
+def parse_ctx(ctx_args):
+    ctx = re.findall('([a-z]+)(\d*)', ctx_args)
+    ctx = [(device, int(num)) if len(num) > 0 else (device, 0) for device, num in ctx]
+    ctx = [mx.Context(*ele) for ele in ctx]
+    return ctx
 
-eps = 1E-5
-N_REPEAT = 5
-
-# candidate_B = [128 * 32]#[128, 128 * 32, 128 * 64, 128 * 128]
-# candidate_C = [1024] #[32, 64, 128, 256, 512, 768, 1024]
-# fwd_time_d = {}
-# bwd_time_d = {}
 
 parser = argparse.ArgumentParser(description='Profile LayerNorm using MXNet.')
 parser.add_argument('--ctx', default='gpu0', help='The number of')
 parser.add_argument('--nbatch', default=128 * 32, help='The number of batches for testing')
 parser.add_argument('--nchannel', default=1024, help='The number of channels for testing')
+parser.add_argument('--eps', default=1E-5, help='The eps of layer normalization')
 parser.add_argument('--nrepeat', default=5, help='Number to repeat the ')
 parser.add_argument('--dtype', default='float32', help='The data type to use')
 parser.add_argument('--profile', default=False, help='Whether to profile the code using CProfile')
 
 
 
-ctx = mx.gpu(0)
 args = parser.parse_args()
 if args.dtype == 'float32':
     dtype = np.float32
@@ -42,6 +39,9 @@ elif args.dtype == 'float16':
     dtype = np.float16
 else:
     raise NotImplementedError
+
+ctx = parse_ctx(args.ctx)[0]
+
 
 if args.profile:
     import cProfile
@@ -75,7 +75,7 @@ def npy_ln_grad(in_data, ograd, eps, gamma):
     return in_data_grad, gamma_grad, beta_grad
 
 
-def check_ln_speed(nbatch, nchannel, nrepeat):
+def check_ln_speed(nbatch, nchannel, eps, nrepeat):
     B, C = nbatch, nchannel
     for _ in range(2):
         in_data = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
