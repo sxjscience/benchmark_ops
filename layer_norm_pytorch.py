@@ -68,6 +68,7 @@ def check_ln_speed(use_apex, nbatch, nchannel, eps, nrepeat):
     fwd_time = 0
     bwd_time = 0
     for i in range(nrepeat + 1):
+        in_data = th.randn(B, C, device=device, dtype=dtype)
         ograd = th.randn(B, C, device=device, dtype=dtype)
         npy_ograd = ograd.cpu().detach().numpy()
         npy_beta = layer.bias.cpu().detach().numpy()
@@ -79,6 +80,7 @@ def check_ln_speed(use_apex, nbatch, nchannel, eps, nrepeat):
 
         # Profile Forward + Backward
         with th.enable_grad():
+            th.cuda.synchronize()
             start = time.time()
             out_data = layer(in_data)
             th.cuda.synchronize()
