@@ -25,7 +25,7 @@ def as_markdown_table(df):
     ret += '|   ' + '|' +  '|'.join([' B={} '.format(ele) for ele in df.columns]) + ' |\n'
     ret += '| --- ' + '|' +  '|'.join([' --- ' for ele in df.columns]) + ' |\n'
     for c in df.index:
-        ret += '|*C={}*'.format(c) + '|' + '|'.join([' {:g} '.format(ele) for ele in df.loc[c, :]]) + ' |\n'
+        ret += '|**C={}**'.format(c) + '|' + '|'.join([' {:g} '.format(ele) for ele in df.loc[c, :]]) + ' |\n'
     return ret
 
 
@@ -94,32 +94,34 @@ def test_speed(codebase, test_batch_l, test_channel_l, eps, use_gpu, dtype, prof
 apex_py_fwd_time, apex_py_bwd_time, apex_nv_fwd_time, apex_nv_bwd_time, apex_nv_bwd_data_time, apex_nv_bwd_gamma_beta_time \
     = test_speed('pytorch_apex', TEST_BATCH_L, TEST_CHANNEL_L, EPS, USE_GPU, DTYPE, profile_nv=True)
 print('PyTorch Apex')
-print('Forward (python timer)')
-print(as_markdown_table(apex_py_fwd_time))
-print('Backward (python timer)')
-print(as_markdown_table(apex_py_bwd_time))
-print('Forward (nvprof timer)')
+print('Forward (nvprof timer)\n')
 print(as_markdown_table(apex_nv_fwd_time))
-print('Backward (nvprof timer)')
+print('Backward (nvprof timer)\n')
 print(as_markdown_table(apex_nv_bwd_time))
-print('Backward Data (nvprof timer)')
+print('Backward Data (nvprof timer)\n')
 print(as_markdown_table(apex_nv_bwd_data_time))
-print('Backward Gamma & Beta (nvprof timer)')
+print('Backward Gamma & Beta (nvprof timer)\n')
 print(as_markdown_table(apex_nv_bwd_gamma_beta_time))
+
+print('Forward (python timer)\n')
+print(as_markdown_table(apex_py_fwd_time))
+print('Backward (python timer)\n')
+print(as_markdown_table(apex_py_bwd_time))
 
 
 mx_py_fwd_time, mx_py_bwd_time, mx_nv_fwd_time, mx_nv_bwd_time, mx_nv_bwd_data_time, mx_nv_bwd_gamma_beta_time =\
     test_speed('mxnet', TEST_BATCH_L, TEST_CHANNEL_L, EPS, USE_GPU, DTYPE, profile_nv=True)
 print('MXNet')
-print('Forward (python timer)')
-print(as_markdown_table(mx_py_fwd_time))
-print('Backward (python timer)')
-print(as_markdown_table(mx_py_bwd_time))
-print('Forward (nvprof timer)')
+print('Forward (nvprof timer)\n')
 print(as_markdown_table(mx_nv_fwd_time))
-print('Backward (nvprof timer)')
+print('Backward (nvprof timer)\n')
 print(as_markdown_table(mx_nv_bwd_time))
-print('Backward Data (nvprof timer)')
+print('Backward Data (nvprof timer)\n')
 print(as_markdown_table(mx_nv_bwd_data_time))
-print('Backward Gamma & Beta (nvprof timer)')
+print('Backward Gamma & Beta (nvprof timer)\n')
 print(as_markdown_table(mx_nv_bwd_gamma_beta_time))
+
+print('Forward (python timer)\n')
+print(as_markdown_table(mx_py_fwd_time))
+print('Backward (python timer)\n')
+print(as_markdown_table(mx_py_bwd_time))
