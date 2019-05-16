@@ -107,3 +107,12 @@ print(as_markdown_table(apex_nv_bwd_gamma_beta_time))
 
 mx_py_fwd_time, mx_py_bwd_time, mx_nv_fwd_time, mx_nv_bwd_time, mx_nv_bwd_data_time, mx_nv_bwd_gamma_beta_time =\
     test_speed('mxnet', TEST_BATCH_L, TEST_CHANNEL_L, EPS, USE_GPU, DTYPE, profile_nv=True)
+print('MXNet')
+print('Forward (nvprof timer)')
+print(as_markdown_table(mx_nv_fwd_time))
+print('Backward (nvprof timer)')
+print(as_markdown_table(mx_nv_bwd_time))
+print('Backward Data (nvprof timer)')
+print(as_markdown_table(mx_nv_bwd_data_time))
+print('Backward Gamma & Beta (nvprof timer)')
+print(as_markdown_table(mx_nv_bwd_gamma_beta_time))
