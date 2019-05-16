@@ -64,8 +64,8 @@ class NVProfResult(object):
         min_time_l = []
         max_time_l = []
         kernel_name_l = []
-        for i in range(self.profile_result.shape[0]):
-            if type(keyword) == str:
+        if type(keyword) == str:
+            for i in range(self.profile_result.shape[0]):
                 if keyword in self.profile_result.loc[i, 'name']:
                     row = self.profile_result[i]
                     ncalls_l.append(int(row['calls']))
@@ -73,15 +73,15 @@ class NVProfResult(object):
                     min_time_l.append(get_time_in_unit(row['min']))
                     max_time_l.append(get_time_in_unit(row['max']))
                     kernel_name_l.append(row['name'])
-            elif type(keyword) == list:
-                for sub_keword in keyword:
-                    sub_ncalls_l, sub_avg_time_l, sub_min_time_l, sub_max_time_l, sub_kernel_name_l =\
-                        self.fetch_run_time(sub_keword, unit=unit)
-                    ncalls_l.extend(sub_ncalls_l)
-                    avg_time_l.extend(sub_avg_time_l)
-                    min_time_l.extend(sub_min_time_l)
-                    max_time_l.extend(sub_max_time_l)
-                    kernel_name_l.extend(sub_kernel_name_l)
+        elif type(keyword) == list:
+            for sub_keword in keyword:
+                sub_ncalls_l, sub_avg_time_l, sub_min_time_l, sub_max_time_l, sub_kernel_name_l =\
+                    self.fetch_run_time(sub_keword, unit=unit)
+                ncalls_l.extend(sub_ncalls_l)
+                avg_time_l.extend(sub_avg_time_l)
+                min_time_l.extend(sub_min_time_l)
+                max_time_l.extend(sub_max_time_l)
+                kernel_name_l.extend(sub_kernel_name_l)
         return ncalls_l, avg_time_l, min_time_l, max_time_l, kernel_name_l
 
 

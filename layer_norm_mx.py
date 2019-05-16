@@ -79,11 +79,7 @@ def check_ln_speed(nbatch, nchannel, eps, nrepeat):
     B, C = nbatch, nchannel
     for _ in range(2):
         in_data = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
-        nd_gamma = mx.nd.ones(shape=(C,), ctx=ctx, dtype=dtype)
-        nd_beta = mx.nd.zeros(shape=(C,), ctx=ctx, dtype=dtype)
         out_data = in_data * in_data
-        # out_data = ln_layer(out_data)
-        out_data = mx.nd.LayerNorm(out_data, gamma=nd_gamma, beta=nd_beta, axis=-1, eps=eps)
         npy_out_data = out_data.asnumpy()
     mx.nd.waitall()
     fwd_time = 0
