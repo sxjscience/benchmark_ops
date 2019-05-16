@@ -60,9 +60,9 @@ if args.profile:
     # pstats.f8 = f8
 
     profiler.set_config(profile_all=True, aggregate_stats=True, filename='profile_output.json')
-    os.environ['MXNET_EXEC_BULK_EXEC_INFERENCE'] = 0
-    os.environ['MXNET_EXEC_BULK_EXEC_TRAIN'] = 0
-    os.environ['MXNET_EXEC_BULK_EXEC_MAX_NODE_TRAIN'] = 0
+    os.environ['MXNET_EXEC_BULK_EXEC_INFERENCE'] = '0'
+    os.environ['MXNET_EXEC_BULK_EXEC_TRAIN'] = '0'
+    os.environ['MXNET_EXEC_BULK_EXEC_MAX_NODE_TRAIN'] = '0'
 
 
 def nd_layer_norm(data, gamma, beta, axis, eps):
