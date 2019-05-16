@@ -19,14 +19,21 @@ MX_BWD_DATA_KEYWORD = 'LayerNormFusedBackwardKernel_Data'
 MX_BWD_GAMMA_BETA_KEYWORD = ['LayerNormFusedBackwardKernel_PartGammaBeta', 'LayerNormFusedBackwardKernel_GammaBeta']
 
 
-def test_speed(runfile, test_batch_l, test_channel_l, eps, ctx, dtype, fwd_keyword,
-               bwd_data_keyword, bwd_gamma_beta_keyword):
+def test_speed(codebase, test_batch_l, test_channel_l, eps, ctx, dtype, fwd_keyword,
+               bwd_data_keyword, bwd_gamma_beta_keyword, use_apex=False):
     for nbatch in test_batch_l:
         for nchannel in test_channel_l:
-            ret = subprocess.run([NVPROF_EXE, PYTHON_EXE, runfile, '--ctx', str(ctx), '--nbatch', str(nchannel),
-                                  '--eps', str(eps), '--dtype', dtype, '--nrepeat', str(N_REPEAT)],
-                                 stderr=subprocess.PIPE,
-                                 stdout=subprocess.PIPE)
+            if codebase == 'mxnet':
+                ret = subprocess.run([NVPROF_EXE, PYTHON_EXE, 'layer_norm_mx.py', '--ctx', str(ctx), '--nbatch', str(nchannel),
+                                      '--eps', str(eps), '--dtype', dtype, '--nrepeat', str(N_REPEAT)],
+                                     stderr=subprocess.PIPE,
+                                     stdout=subprocess.PIPE)
+            else:
+                ret = subprocess.run(
+                    [NVPROF_EXE, PYTHON_EXE, 'layer_norm_pytorch.py', '--ctx', str(ctx), '--nbatch', str(nchannel),
+                     '--eps', str(eps), '--dtype', dtype, '--nrepeat', str(N_REPEAT)],
+                    stderr=subprocess.PIPE,
+                    stdout=subprocess.PIPE)
             runfile_out = ret.stdout.decode('utf-8')
             fwd_time, bwd_time = re.match(LN_OUT_REG, runfile_out).groups()
             fwd_time = float(fwd_time)
@@ -41,5 +48,4 @@ def test_speed(runfile, test_batch_l, test_channel_l, eps, ctx, dtype, fwd_keywo
             bwd_gamma_beta_runtime = sum(bwd_gamma_beta_runtime)
             print(fwd_runtime, bwd_data_runtime, bwd_gamma_beta_runtime)
 
-test_speed('layer_norm_mx.py', TEST_BATCH_L, TEST_CHANNEL_L, EPS, CTX, DTYPE,
-           MX_FWD_KEYWORD, MX_BWD_DATA_KEYWORD, MX_BWD_GAMMA_BETA_KEYWORD)
+test_speed('mxnet', TEST_BATCH_L, TEST_CHANNEL_L, EPS, CTX, DTYPE, MX_FWD_KEYWORD, MX_BWD_DATA_KEYWORD, MX_BWD_GAMMA_BETA_KEYWORD)

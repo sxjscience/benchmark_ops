@@ -22,7 +22,7 @@ def parse_ctx(ctx_args):
 
 
 parser = argparse.ArgumentParser(description='Profile LayerNorm using MXNet.')
-parser.add_argument('--ctx', default='gpu0', type=str, help='The number of')
+parser.add_argument('--use_gpu', default=1, type=int, help='Whether to use gpu')
 parser.add_argument('--nbatch', default=128 * 32, type=int, help='The number of batches for testing')
 parser.add_argument('--nchannel', default=1024, type=int, help='The number of channels for testing')
 parser.add_argument('--eps', default=1E-5, type=float, help='The eps of layer normalization')
@@ -42,7 +42,10 @@ elif args.dtype == 'float16':
 else:
     raise NotImplementedError
 
-ctx = parse_ctx(args.ctx)[0]
+if args.use_gpu:
+    ctx = mx.gpu(0)
+else:
+    ctx = mx.cpu()
 
 
 if args.profile:
@@ -96,7 +99,7 @@ def check_ln_speed(nbatch, nchannel, eps, nrepeat):
     if args.profile:
         profiler.set_state('run')
         profiler.pause()
-    for _ in range(nrepeat):
+    for i in range(nrepeat + 1):
         in_data = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
         ograd = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
         nd_gamma = mx.nd.ones(shape=(C,), ctx=ctx, dtype=dtype)
@@ -116,22 +119,22 @@ def check_ln_speed(nbatch, nchannel, eps, nrepeat):
         # Profile Forward + Backward
         with mx.autograd.record():
             mx.nd.waitall()
-            if args.profile:
+            if args.profile and i > 0:
                 profiler.resume()
             start = time.time()
             out_data, mean_val, std_val = mx.nd.LayerNorm(in_data, gamma=nd_gamma, beta=nd_beta, axis=-1, eps=eps,
                                                           output_mean_var=True)
             out_data.wait_to_read()
-            fwd_time += time.time() - start
+            if i > 0:
+                fwd_time += time.time() - start
             mx.nd.waitall()
             start = time.time()
             out_data.backward(ograd)
             mx.nd.waitall()
-            if args.profile:
+            if args.profile and i > 0:
                 profiler.pause()
-            bwd_time += time.time() - start
-        if args.profile:
-            profiler.set_state('stop')
+            if i > 0:
+                bwd_time += time.time() - start
         mx_in_data_grad = in_data.grad.asnumpy()
         mx_gamma_grad = nd_gamma.grad.asnumpy()
         mx_beta_grad = nd_beta.grad.asnumpy()
@@ -144,6 +147,8 @@ def check_ln_speed(nbatch, nchannel, eps, nrepeat):
         # npt.assert_allclose(ln_layer.params.get('beta').data().grad.asnumpy(), gt_beta_grad, 1E-5, 1E-5)
         npt.assert_allclose(mx_gamma_grad, gt_gamma_grad, 1E-3, 1E-3)
         npt.assert_allclose(mx_beta_grad, gt_beta_grad, 1E-3, 1E-3)
+    if args.profile:
+        profiler.set_state('stop')
     return fwd_time / nrepeat * 1000000, bwd_time / nrepeat * 1000000
 fwd_time, bwd_time = check_ln_speed(args.nbatch, args.nchannel, args.eps, args.nrepeat)
 
