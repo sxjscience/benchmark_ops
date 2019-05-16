@@ -50,88 +50,47 @@ elif args.dtype == 'float16':
 else:
     raise NotImplementedError
 
+def check_ln_speed(use_apex, nbatch, nchannel, eps, nrepeat):
+    B, C = nbatch, nchannel
+    # WarmUp
+    for _ in range(2):
+        in_data = th.randn(B, C, device=device, dtype=dtype)
+        out_data = in_data * in_data
+        npy_out_data = out_data.cpu().numpy()
+    if not use_apex:
+        layer = nn.LayerNorm(in_data.size()[1:], eps=eps)
+    else:
+        layer = FusedLayerNorm(in_data.size()[1:], eps=eps)
+    layer.cuda(device)
+    if dtype == th.float16:
+        layer.half()
+    th.cuda.synchronize()
+    fwd_time = 0
+    bwd_time = 0
+    for _ in range(nrepeat):
+        ograd = th.randn(B, C, device=device, dtype=dtype)
+        npy_ograd = ograd.cpu().detach().numpy()
+        npy_beta = layer.bias.cpu().detach().numpy()
+        npy_in_data = in_data.cpu().detach().numpy()
+        gt_out = (npy_in_data - npy_in_data.mean(axis=-1, keepdims=True)) \
+                 / np.sqrt(npy_in_data.var(axis=-1, keepdims=True) + eps)
+        gt_in_data_grad, gt_gamma_grad, gt_beta_grad = npy_ln_grad(npy_in_data, npy_ograd, eps, npy_beta)
+        th.cuda.synchronize()
 
-eps = 1E-5
-n_repeats = 5
-
-
-candidate_B = [128 * 32]#[128, 128 * 32, 128 * 64, 128 * 128] # The result of apex is wrong when B >= 128 * 512
-candidate_C = [256]#[32, 64, 128, 256, 512, 768, 1024]
-fwd_only_time_d = {}
-fwd_time_d = {}
-bwd_time_d = {}
-
-for key in ['th', 'apex']:
-    fwd_only_time_d[key] = pd.DataFrame(np.zeros(shape=(len(candidate_B), len(candidate_C)), dtype=np.float64),
-                                        index=candidate_B, columns=candidate_C)
-    fwd_time_d[key] = pd.DataFrame(np.zeros(shape=(len(candidate_B), len(candidate_C)), dtype=np.float64),
-                                   index=candidate_B, columns=candidate_C)
-    bwd_time_d[key] = pd.DataFrame(np.zeros(shape=(len(candidate_B), len(candidate_C)), dtype=np.float64),
-                                   index=candidate_B, columns=candidate_C)
-for B in candidate_B:
-    for C in candidate_C:
-        for key in ['th', 'apex']:
-            # WarmUp
-            for _ in range(2):
-                in_data = th.randn(B, C, device=device, dtype=dtype)
-                out_data = in_data * in_data
-                npy_out_data = out_data.cpu().numpy()
-            if key == 'th':
-                layer = nn.LayerNorm(in_data.size()[1:], eps=eps)
-            elif key == 'apex':
-                layer = FusedLayerNorm(in_data.size()[1:], eps=eps)
-            else:
-                raise NotImplementedError
-            layer.cuda(device)
-            if dtype == th.float16:
-                layer.half()
+        # Profile Forward + Backward
+        with th.enable_grad():
+            start = time.time()
+            out_data = layer(in_data)
             th.cuda.synchronize()
-            fwd_only_time = 0
-            fwd_time = 0
-            bwd_time = 0
-            for _ in range(n_repeats):
-                in_data = th.randn(B, C, device=device, dtype=dtype, requires_grad=True)
-                ograd = th.randn(B, C, device=device, dtype=dtype)
-                npy_in_data = in_data.cpu().detach().numpy()
-                gt_out = (npy_in_data - npy_in_data.mean(axis=-1, keepdims=True))\
-                          / np.sqrt(npy_in_data.var(axis=-1, keepdims=True) + eps)
-                th.cuda.synchronize()
+            fwd_time += time.time() - start
+            start = time.time()
+            out_data.backward([ograd])
+            th.cuda.synchronize()
+            bwd_time += time.time() - start
+        npy_th_out_data = out_data.cpu().detach().numpy()
+        npt.assert_allclose(npy_th_out_data, gt_out, 1E-5, 1E-5)
 
-                # Profile Forward-only
-                start = time.time()
-                with th.no_grad():
-                    out_data = layer(in_data)
-                th.cuda.synchronize()
-                fwd_only_time += time.time() - start
-                npy_th_out_data = out_data.cpu().numpy()
-                npt.assert_allclose(npy_th_out_data, gt_out, 1E-5, 1E-5)
+    return fwd_time / nrepeat * 1000000, bwd_time / nrepeat * 1000000
+fwd_time, bwd_time = check_ln_speed(args.apex, args.nbatch, args.nchannel, args.eps, args.nrepeat)
 
-                # Profile Forward + Backward
-                with th.enable_grad():
-                    start = time.time()
-                    out_data = layer(in_data)
-                    th.cuda.synchronize()
-                    fwd_time += time.time() - start
-                    start = time.time()
-                    out_data.backward([ograd])
-                    th.cuda.synchronize()
-                    bwd_time += time.time() - start
-            fwd_only_time_d[key].at[B, C] = fwd_only_time / n_repeats * 1000000
-            fwd_time_d[key].at[B, C] = fwd_time / n_repeats * 1000000
-            bwd_time_d[key].at[B, C] = bwd_time / n_repeats * 1000000
-            print('B={}, C={}'.format(B, C))
-            print('LayeNorm = {}'.format(key))
-            print('   fwd-only = {} ms, fwd = {} ms, bwd = {} ms'.format(fwd_only_time / n_repeats * 1000000,
-                                                                         fwd_time / n_repeats * 1000000,
-                                                                         bwd_time / n_repeats * 1000000))
-print('PyTorch LayerNorm Forward ')
-print(fwd_time_d['th'])
-
-print('PyTorch LayerNorm Backward ')
-print(bwd_time_d['th'])
-
-print('Apex LayerNorm Forward')
-print(fwd_time_d['apex'])
-
-print('Apex LayerNorm Backward')
-print(bwd_time_d['apex'])
+print('Forward: {}us, Backward: {}us'.format(fwd_time, bwd_time))

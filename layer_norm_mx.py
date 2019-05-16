@@ -150,6 +150,7 @@ def check_ln_speed(nbatch, nchannel, eps, nrepeat):
     if args.profile:
         profiler.set_state('stop')
     return fwd_time / nrepeat * 1000000, bwd_time / nrepeat * 1000000
+
 fwd_time, bwd_time = check_ln_speed(args.nbatch, args.nchannel, args.eps, args.nrepeat)
 
 print('Forward: {}us, Backward: {}us'.format(fwd_time, bwd_time))
