@@ -67,6 +67,7 @@ def test_speed(codebase, test_batch_l, test_channel_l, eps, use_gpu, dtype, prof
             bwd_time = round(bwd_time, 1)
             py_time_fwd_df.loc[nchannel, nbatch] = fwd_time
             py_time_bwd_df.loc[nchannel, nbatch] = bwd_time
+            print('{}, B={}, C={}, fwd={}, bwd={}'.format(codebase, nbatch, nchannel, fwd_time, bwd_time))
             if profile_nv:
                 nvprof_result = parse_nvprof_out(ret.stderr.decode('utf-8'))
                 _, fwd_runtime, _, _, _ = nvprof_result.fetch_run_time(keyword=fwd_keyword, unit='us')
