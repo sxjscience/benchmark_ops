@@ -39,6 +39,7 @@ def test_speed(runfile, test_batch_l, test_channel_l, eps, ctx, dtype, fwd_keywo
             bwd_data_runtime = sum(bwd_data_runtime)
             _, bwd_gamma_beta_runtime, _, _, _ = nvprof_result.fetch_run_time(keyword=bwd_gamma_beta_keyword, unit='us')
             bwd_gamma_beta_runtime = sum(bwd_gamma_beta_runtime)
+            print(fwd_runtime, bwd_data_runtime, bwd_gamma_beta_runtime)
 
 test_speed('layer_norm_mx.py', TEST_BATCH_L, TEST_CHANNEL_L, EPS, CTX, DTYPE,
            MX_FWD_KEYWORD, MX_BWD_DATA_KEYWORD, MX_BWD_GAMMA_BETA_KEYWORD)
