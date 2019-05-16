@@ -25,7 +25,10 @@ def as_markdown_table(df):
     ret += '|   ' + '|' +  '|'.join([' B={} '.format(ele) for ele in df.columns]) + ' |\n'
     ret += '| --- ' + '|' +  '|'.join([' --- ' for ele in df.columns]) + ' |\n'
     for c in df.index:
-        ret += '|**C={}**'.format(c) + '|' + '|'.join([' {:g} '.format(ele) for ele in df.loc[c, :]]) + ' |\n'
+        ret += '|**C={}**'.format(c) + '|' + '|'.join([' {:g} '.format(df.loc[c, b])
+                                                       if (b, c) not in LARGE_BERT_SHAPES
+                                                       else ' **{:g}** '.format(df.loc[c, b])
+                                                       for b in df.columns]) + ' |\n'
     return ret
 
 
