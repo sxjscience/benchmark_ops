@@ -20,13 +20,13 @@ def parse_ctx(ctx_args):
 
 
 parser = argparse.ArgumentParser(description='Profile LayerNorm using MXNet.')
-parser.add_argument('--ctx', default='gpu0', help='The number of')
-parser.add_argument('--nbatch', default=128 * 32, help='The number of batches for testing')
-parser.add_argument('--nchannel', default=1024, help='The number of channels for testing')
-parser.add_argument('--eps', default=1E-5, help='The eps of layer normalization')
+parser.add_argument('--ctx', default='gpu0', type=str, help='The number of')
+parser.add_argument('--nbatch', default=128 * 32, type=int, help='The number of batches for testing')
+parser.add_argument('--nchannel', default=1024, type=int, help='The number of channels for testing')
+parser.add_argument('--eps', default=1E-5, type=float, help='The eps of layer normalization')
 parser.add_argument('--nrepeat', default=5, help='Number to repeat the ')
-parser.add_argument('--dtype', default='float32', help='The data type to use')
-parser.add_argument('--profile', default=False, help='Whether to profile the code using CProfile')
+parser.add_argument('--dtype', default='float32', type=str, help='The data type to use')
+parser.add_argument('--profile', default=False, type=bool, help='Whether to profile the code using CProfile')
 
 
 
