@@ -67,7 +67,7 @@ def check_ln_speed(use_apex, nbatch, nchannel, eps, nrepeat):
     th.cuda.synchronize()
     fwd_time = 0
     bwd_time = 0
-    for _ in range(nrepeat + 1):
+    for i in range(nrepeat + 1):
         ograd = th.randn(B, C, device=device, dtype=dtype)
         npy_ograd = ograd.cpu().detach().numpy()
         npy_beta = layer.bias.cpu().detach().numpy()
