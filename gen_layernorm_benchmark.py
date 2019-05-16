@@ -13,7 +13,7 @@ EPS = 1E-5
 CTX = 'gpu0'
 DTYPE = 'float32'
 TIME_R = r'\d+\.?\d*'
-LN_OUT_REG = r'Forward: {}us, Backward: {}us'.format(TIME_R, TIME_R)
+LN_OUT_REG = r'Forward: ({})us, Backward: ({})us'.format(TIME_R, TIME_R)
 
 def test_speed(runfile, test_batch_l, test_channel_l, eps, ctx, dtype):
     for nbatch in test_batch_l:
