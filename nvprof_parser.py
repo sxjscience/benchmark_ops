@@ -17,6 +17,24 @@ NVPROF_STAT_REG = SPACES_R + '({})'.format(PERCENTAGE_R) +\
                   SPACES_R + '({})'.format(ANY_SEQ_R)
 
 
+def get_time_in_unit(time_spent, base='us'):
+    if base == 'us':
+        base_frac = 1E-6
+    elif base == 'ms':
+        base_frac = 1E-3
+    elif base == 's':
+        base_frac = 1
+    else:
+        raise NotImplementedError
+    assert time_spent[-1] == 's'
+    if time_spent[-2] == 'm':
+        return float(time_spent[:-2]) * 1E-3 / base_frac
+    elif time_spent[-2] == 'u':
+        return float(time_spent[:-2]) * 1E-6 / base_frac
+    else:
+        return float(time_spent[:-1]) / base_frac
+
+
 class NVProfResult(object):
     def __init__(self, command, profile_result):
         """
@@ -30,18 +48,41 @@ class NVProfResult(object):
         self.command = command
         self.profile_result = profile_result
 
-    def fetch_run_time(self, match_reg, base='us'):
+    def fetch_run_time(self, keyword, unit='us'):
         """
 
         Returns
         -------
-        ncalls : int
-        avg_time: float
-        min_time: float
-        max_time: float
-        kernel_name: str
+        ncalls_l : list of int
+        avg_time_l : list of float
+        min_time_l : list of float
+        max_time_l : list of float
+        kernel_name_l : list of str
         """
-        pass
+        ncalls_l = []
+        avg_time_l = []
+        min_time_l = []
+        max_time_l = []
+        kernel_name_l = []
+        for i in range(self.profile_result.shape[0]):
+            if type(keyword) == str:
+                if keyword in self.profile_result.loc[i, 'name']:
+                    row = self.profile_result[i]
+                    ncalls_l.append(int(row['calls']))
+                    avg_time_l.append(get_time_in_unit(row['avg']))
+                    min_time_l.append(get_time_in_unit(row['min']))
+                    max_time_l.append(get_time_in_unit(row['max']))
+                    kernel_name_l.append(row['name'])
+            elif type(keyword) == list:
+                for sub_keword in keyword:
+                    sub_ncalls_l, sub_avg_time_l, sub_min_time_l, sub_max_time_l, sub_kernel_name_l =\
+                        self.fetch_run_time(sub_keword, unit=unit)
+                    ncalls_l.extend(sub_ncalls_l)
+                    avg_time_l.extend(sub_avg_time_l)
+                    min_time_l.extend(sub_min_time_l)
+                    max_time_l.extend(sub_max_time_l)
+                    kernel_name_l.extend(sub_kernel_name_l)
+        return ncalls_l, avg_time_l, min_time_l, max_time_l, kernel_name_l
 
 
 def parse_nvprof_out(data):

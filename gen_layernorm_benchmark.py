@@ -14,8 +14,13 @@ CTX = 'gpu0'
 DTYPE = 'float32'
 TIME_R = r'\d+\.?\d*'
 LN_OUT_REG = r'Forward: ({})us, Backward: ({})us'.format(TIME_R, TIME_R)
+MX_FWD_KEYWORD = 'LayerNormFusedForwardKernel'
+MX_BWD_DATA_KEYWORD = 'LayerNormFusedBackwardKernel_Data'
+MX_BWD_GAMMA_BETA_KEYWORD = ['LayerNormFusedBackwardKernel_PartGammaBeta', 'LayerNormFusedBackwardKernel_GammaBeta']
 
-def test_speed(runfile, test_batch_l, test_channel_l, eps, ctx, dtype):
+
+def test_speed(runfile, test_batch_l, test_channel_l, eps, ctx, dtype, fwd_keyword,
+               bwd_data_keyword, bwd_gamma_beta_keyword):
     for nbatch in test_batch_l:
         for nchannel in test_channel_l:
             ret = subprocess.run([NVPROF_EXE, PYTHON_EXE, runfile, '--ctx', str(ctx), '--nbatch', str(nchannel),
@@ -28,6 +33,12 @@ def test_speed(runfile, test_batch_l, test_channel_l, eps, ctx, dtype):
             bwd_time = float(bwd_time)
             print(nbatch, nchannel, fwd_time, bwd_time)
             nvprof_result = parse_nvprof_out(ret.stderr.decode('utf-8'))
-            print(nvprof_result.command, nvprof_result.profile_result)
+            _, fwd_runtime, _, _, _ = nvprof_result.fetch_run_time(keyword=fwd_keyword, unit='us')
+            fwd_runtime = sum(fwd_runtime)
+            _, bwd_data_runtime, _, _, _ = nvprof_result.fetch_run_time(keyword=bwd_data_keyword, unit='us')
+            bwd_data_runtime = sum(bwd_data_runtime)
+            _, bwd_gamma_beta_runtime, _, _, _ = nvprof_result.fetch_run_time(keyword=bwd_gamma_beta_keyword, unit='us')
+            bwd_gamma_beta_runtime = sum(bwd_gamma_beta_runtime)
 
-test_speed('layer_norm_mx.py', TEST_BATCH_L, TEST_CHANNEL_L, EPS, CTX, DTYPE)
+test_speed('layer_norm_mx.py', TEST_BATCH_L, TEST_CHANNEL_L, EPS, CTX, DTYPE,
+           MX_FWD_KEYWORD, MX_BWD_DATA_KEYWORD, MX_BWD_GAMMA_BETA_KEYWORD)

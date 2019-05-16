@@ -102,6 +102,8 @@ def check_ln_speed(nbatch, nchannel, eps, nrepeat):
         in_data.attach_grad()
         nd_gamma.attach_grad()
         nd_beta.attach_grad()
+        _no_use = nd_gamma.asnumpy()
+        _no_use = nd_beta.asnumpy()
         mx.nd.waitall()
         # Profile Forward + Backward
         if args.profile:
