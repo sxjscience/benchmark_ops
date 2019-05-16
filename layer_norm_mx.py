@@ -8,6 +8,8 @@ import argparse
 import io
 import re
 
+
+
 np.random.seed(123)
 mx.random.seed(123)
 
@@ -44,16 +46,23 @@ ctx = parse_ctx(args.ctx)[0]
 
 
 if args.profile:
-    import cProfile
-    import pstats
-    def f8(x):
-        ret = "%8.3f" % x
-        if ret != '   0.000':
-            return ret
-        return "%6dµs" % (x * 1000000)
+    import os
+    from mxnet import profiler
+    # import cProfile
+    # import pstats
+    # def f8(x):
+    #     ret = "%8.3f" % x
+    #     if ret != '   0.000':
+    #         return ret
+    #     return "%6dµs" % (x * 1000000)
+    #
+    #
+    # pstats.f8 = f8
 
-
-    pstats.f8 = f8
+    profiler.set_config(profile_all=True, aggregate_stats=True, filename='profile_output.json')
+    os.environ['MXNET_EXEC_BULK_EXEC_INFERENCE'] = 0
+    os.environ['MXNET_EXEC_BULK_EXEC_TRAIN'] = 0
+    os.environ['MXNET_EXEC_BULK_EXEC_MAX_NODE_TRAIN'] = 0
 
 
 def nd_layer_norm(data, gamma, beta, axis, eps):
@@ -84,6 +93,9 @@ def check_ln_speed(nbatch, nchannel, eps, nrepeat):
     mx.nd.waitall()
     fwd_time = 0
     bwd_time = 0
+    if args.profile:
+        profiler.set_state('run')
+        profiler.pause()
     for _ in range(nrepeat):
         in_data = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
         ograd = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
@@ -102,11 +114,10 @@ def check_ln_speed(nbatch, nchannel, eps, nrepeat):
         _no_use = nd_beta.asnumpy()
         mx.nd.waitall()
         # Profile Forward + Backward
-        if args.profile:
-            pr = cProfile.Profile()
-            pr.enable()
         with mx.autograd.record():
             mx.nd.waitall()
+            if args.profile:
+                profiler.resume()
             start = time.time()
             out_data, mean_val, std_val = mx.nd.LayerNorm(in_data, gamma=nd_gamma, beta=nd_beta, axis=-1, eps=eps,
                                                           output_mean_var=True)
@@ -116,13 +127,11 @@ def check_ln_speed(nbatch, nchannel, eps, nrepeat):
             start = time.time()
             out_data.backward(ograd)
             mx.nd.waitall()
+            if args.profile:
+                profiler.pause()
             bwd_time += time.time() - start
         if args.profile:
-            pr.disable()
-            s = io.StringIO()
-            ps = pstats.Stats(pr, stream=s).sort_stats('cumulative')
-            ps.print_stats(15)
-            print(s.getvalue())
+            profiler.set_state('stop')
         mx_in_data_grad = in_data.grad.asnumpy()
         mx_gamma_grad = nd_gamma.grad.asnumpy()
         mx_beta_grad = nd_beta.grad.asnumpy()
@@ -139,3 +148,6 @@ def check_ln_speed(nbatch, nchannel, eps, nrepeat):
 fwd_time, bwd_time = check_ln_speed(args.nbatch, args.nchannel, args.eps, args.nrepeat)
 
 print('Forward: {}us, Backward: {}us'.format(fwd_time, bwd_time))
+if(args.profile):
+    print(profiler.dumps())
+    profiler.dump()
