@@ -67,7 +67,7 @@ def check_ln_speed(use_apex, nbatch, nchannel, eps, nrepeat):
     th.cuda.synchronize()
     fwd_time = 0
     bwd_time = 0
-    for i in range(nrepeat + 1):
+    for i in range(nrepeat):
         in_data = th.randn(B, C, device=device, dtype=dtype)
         ograd = th.randn(B, C, device=device, dtype=dtype)
         npy_in_data = in_data.cpu().detach().numpy()
@@ -81,13 +81,11 @@ def check_ln_speed(use_apex, nbatch, nchannel, eps, nrepeat):
             start = time.time()
             out_data = layer(in_data)
             th.cuda.synchronize()
-            if i > 0:
-                fwd_time += time.time() - start
+            fwd_time += time.time() - start
             start = time.time()
             out_data.backward([ograd])
             th.cuda.synchronize()
-            if i > 0:
-                bwd_time += time.time() - start
+            bwd_time += time.time() - start
         npy_th_out_data = out_data.cpu().detach().numpy()
         npt.assert_allclose(npy_th_out_data, gt_out, 1E-5, 1E-5)
 
