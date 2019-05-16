@@ -39,19 +39,22 @@ def test_speed(codebase, test_batch_l, test_channel_l, eps, use_gpu, dtype, prof
     for nbatch in test_batch_l:
         for nchannel in test_channel_l:
             if codebase == 'mxnet':
-                run_args = [PYTHON_EXE, 'layer_norm_mx.py', '--use_gpu', str(use_gpu), '--nbatch', str(nchannel),
+                run_args = [PYTHON_EXE, 'layer_norm_mx.py', '--use_gpu', str(use_gpu), '--nbatch', str(nbatch),
+                            '--nchannel', str(nchannel),
                             '--eps', str(eps), '--dtype', dtype, '--nrepeat', str(N_REPEAT)]
                 fwd_keyword = 'LayerNormFusedForwardKernel'
                 bwd_data_keyword = 'LayerNormFusedBackwardKernel_Data'
                 bwd_gamma_beta_keyword = ['LayerNormFusedBackwardKernel_PartGammaBeta', 'LayerNormFusedBackwardKernel_GammaBeta']
             elif codebase == 'pytorch':
-                run_args = [PYTHON_EXE, 'layer_norm_pytorch.py', '--use_gpu', str(use_gpu), '--nbatch', str(nchannel),
+                run_args = [PYTHON_EXE, 'layer_norm_pytorch.py', '--use_gpu', str(use_gpu), '--nbatch', str(nbatch),
+                            '--nchannel', str(nchannel),
                             '--eps', str(eps), '--dtype', dtype, '--nrepeat', str(N_REPEAT)]
                 fwd_keyword = None
                 bwd_data_keyword = None
                 bwd_gamma_beta_keyword = None
             elif codebase == 'pytorch_apex':
-                run_args = [PYTHON_EXE, 'layer_norm_pytorch.py', '--use_gpu', str(use_gpu), '--nbatch', str(nchannel),
+                run_args = [PYTHON_EXE, 'layer_norm_pytorch.py', '--use_gpu', str(use_gpu), '--nbatch', str(nbatch),
+                            '--nchannel', str(nchannel),
                             '--eps', str(eps), '--dtype', dtype, '--nrepeat', str(N_REPEAT), '--apex']
                 fwd_keyword = 'cuApplyLayerNorm'
                 bwd_data_keyword = 'cuComputeGradInput'
