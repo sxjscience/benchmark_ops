@@ -67,6 +67,7 @@ class NVProfResult(object):
         if type(keyword) == str:
             for i in range(self.profile_result.shape[0]):
                 row = self.profile_result.loc[i]
+                print(row)
                 if keyword in row['name']:
                     ncalls_l.append(int(row['calls']))
                     avg_time_l.append(get_time_in_unit(row['avg']))
