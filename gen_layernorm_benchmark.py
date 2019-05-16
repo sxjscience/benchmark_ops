@@ -65,7 +65,6 @@ def test_speed(codebase, test_batch_l, test_channel_l, eps, use_gpu, dtype, prof
             fwd_time, bwd_time = re.match(LN_OUT_REG, runfile_out).groups()
             fwd_time = round(fwd_time, 1)
             bwd_time = round(bwd_time, 1)
-            print(nbatch, nchannel, fwd_time, bwd_time)
             py_time_fwd_df.loc[nchannel, nbatch] = fwd_time
             py_time_bwd_df.loc[nchannel, nbatch] = bwd_time
             if profile_nv:
@@ -76,7 +75,6 @@ def test_speed(codebase, test_batch_l, test_channel_l, eps, use_gpu, dtype, prof
                 bwd_data_runtime = sum(bwd_data_runtime)
                 _, bwd_gamma_beta_runtime, _, _, _ = nvprof_result.fetch_run_time(keyword=bwd_gamma_beta_keyword, unit='us')
                 bwd_gamma_beta_runtime = sum(bwd_gamma_beta_runtime)
-                print(fwd_runtime, bwd_data_runtime, bwd_gamma_beta_runtime)
                 total_bwd_runtime = bwd_data_runtime + bwd_gamma_beta_runtime
                 nv_time_fwd_df[nchannel, nbatch] = round(fwd_runtime, 1)
                 nv_time_bwd_df[nchannel, nbatch] = round(total_bwd_runtime, 1)
