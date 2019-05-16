@@ -82,11 +82,13 @@ def check_ln_speed(use_apex, nbatch, nchannel, eps, nrepeat):
             start = time.time()
             out_data = layer(in_data)
             th.cuda.synchronize()
-            fwd_time += time.time() - start
+            if i > 0:
+                fwd_time += time.time() - start
             start = time.time()
             out_data.backward([ograd])
             th.cuda.synchronize()
-            bwd_time += time.time() - start
+            if i > 0:
+                bwd_time += time.time() - start
         npy_th_out_data = out_data.cpu().detach().numpy()
         npt.assert_allclose(npy_th_out_data, gt_out, 1E-5, 1E-5)
     return fwd_time / nrepeat * 1000000, bwd_time / nrepeat * 1000000
