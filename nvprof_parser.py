@@ -66,8 +66,8 @@ class NVProfResult(object):
         kernel_name_l = []
         if type(keyword) == str:
             for i in range(self.profile_result.shape[0]):
-                if keyword in self.profile_result.loc[i, 'name']:
-                    row = self.profile_result[i]
+                row = self.profile_result.loc[i]
+                if keyword in row['name']:
                     ncalls_l.append(int(row['calls']))
                     avg_time_l.append(get_time_in_unit(row['avg']))
                     min_time_l.append(get_time_in_unit(row['min']))
