@@ -68,6 +68,7 @@ def test_speed(codebase, test_batch_l, test_channel_l, eps, use_gpu, dtype, prof
                 run_args = [NVPROF_EXE] + run_args
             ret = subprocess.run(run_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             runfile_out = ret.stdout.decode('utf-8')
+            print(runfile_out)
             fwd_time, bwd_time = re.match(LN_OUT_REG, runfile_out).groups()
             fwd_time = float(fwd_time)
             bwd_time = float(bwd_time)
