@@ -22,10 +22,10 @@ MX_BWD_GAMMA_BETA_KEYWORD = ['LayerNormFusedBackwardKernel_PartGammaBeta', 'Laye
 def as_markdown_table(df):
     ret = ''
     # Print header
-    ret += ' ' + '|' +  '|'.join([' B={} '.format(ele) for ele in df.columns]) + '\n'
-    ret += '---' + '|' +  '|'.join(['---' for ele in df.columns]) + '\n'
+    ret += '|   ' + '|' +  '|'.join([' B={} '.format(ele) for ele in df.columns]) + ' |\n'
+    ret += '| --- ' + '|' +  '|'.join([' --- ' for ele in df.columns]) + ' |\n'
     for c in df.index:
-        ret += 'C={}'.format(c) + '|' + '|'.join([' {:g} '.format(ele) for ele in df.loc[c, :]]) + '\n'
+        ret += '|*C={}*'.format(c) + '|' + '|'.join([' {:g} '.format(ele) for ele in df.loc[c, :]]) + ' |\n'
     return ret
 
 
@@ -91,10 +91,10 @@ def test_speed(codebase, test_batch_l, test_channel_l, eps, use_gpu, dtype, prof
 apex_py_fwd_time, apex_py_bwd_time, apex_nv_fwd_time, apex_nv_bwd_time, apex_nv_bwd_data_time, apex_nv_bwd_gamma_beta_time \
     = test_speed('pytorch_apex', TEST_BATCH_L, TEST_CHANNEL_L, EPS, USE_GPU, DTYPE, profile_nv=True)
 print('PyTorch Apex')
-print('Forward (python timer)')
-print(as_markdown_table(apex_py_fwd_time))
-print('Backward (python timer)')
-print(as_markdown_table(apex_py_bwd_time))
+# print('Forward (python timer)')
+# print(as_markdown_table(apex_py_fwd_time))
+# print('Backward (python timer)')
+# print(as_markdown_table(apex_py_bwd_time))
 print('Forward (nvprof timer)')
 print(as_markdown_table(apex_nv_fwd_time))
 print('Backward (nvprof timer)')
