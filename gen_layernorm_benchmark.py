@@ -63,10 +63,10 @@ def test_speed(codebase, test_batch_l, test_channel_l, eps, use_gpu, dtype, prof
             ret = subprocess.run(run_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             runfile_out = ret.stdout.decode('utf-8')
             fwd_time, bwd_time = re.match(LN_OUT_REG, runfile_out).groups()
-            fwd_time = round(fwd_time, 1)
-            bwd_time = round(bwd_time, 1)
-            py_time_fwd_df.loc[nchannel, nbatch] = fwd_time
-            py_time_bwd_df.loc[nchannel, nbatch] = bwd_time
+            fwd_time = float(fwd_time)
+            bwd_time = float(bwd_time)
+            py_time_fwd_df.loc[nchannel, nbatch] = round(fwd_time, 1)
+            py_time_bwd_df.loc[nchannel, nbatch] = round(bwd_time, 1)
             print('{}, B={}, C={}, fwd={}, bwd={}'.format(codebase, nbatch, nchannel, fwd_time, bwd_time))
             if profile_nv:
                 nvprof_result = parse_nvprof_out(ret.stderr.decode('utf-8'))
