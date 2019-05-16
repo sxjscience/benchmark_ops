@@ -138,6 +138,6 @@ def check_ln_speed(nbatch, nchannel, eps, nrepeat):
         npt.assert_allclose(mx_gamma_grad, gt_gamma_grad, 1E-3, 1E-3)
         npt.assert_allclose(mx_beta_grad, gt_beta_grad, 1E-3, 1E-3)
     return fwd_time / nrepeat * 1000000, bwd_time / nrepeat * 1000000
-fwd_time, bwd_time = check_ln_speed(args.nbatch, args.nchannel, args.nrepeat)
+fwd_time, bwd_time = check_ln_speed(args.nbatch, args.nchannel, args.eps, args.nrepeat)
 
 print('Forward: {}us, Backward: {}us'.format(fwd_time, bwd_time))
