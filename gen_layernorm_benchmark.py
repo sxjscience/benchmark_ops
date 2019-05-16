@@ -10,7 +10,7 @@ NVPROF_EXE = 'nvprof'
 PYTHON_EXE = 'python3'
 N_REPEAT = 3
 EPS = 1E-5
-CTX = 'gpu0'
+USE_GPU = 1
 DTYPE = 'float32'
 TIME_R = r'\d+\.?\d*'
 LN_OUT_REG = r'Forward: ({})us, Backward: ({})us'.format(TIME_R, TIME_R)
@@ -19,23 +19,24 @@ MX_BWD_DATA_KEYWORD = 'LayerNormFusedBackwardKernel_Data'
 MX_BWD_GAMMA_BETA_KEYWORD = ['LayerNormFusedBackwardKernel_PartGammaBeta', 'LayerNormFusedBackwardKernel_GammaBeta']
 
 
-def test_speed(codebase, test_batch_l, test_channel_l, eps, ctx, dtype, fwd_keyword,
+def test_speed(codebase, test_batch_l, test_channel_l, eps, use_gpu, dtype, fwd_keyword,
                bwd_data_keyword, bwd_gamma_beta_keyword, profile_nv):
     for nbatch in test_batch_l:
         for nchannel in test_channel_l:
             if codebase == 'mxnet':
-                ret = subprocess.run([NVPROF_EXE, PYTHON_EXE, 'layer_norm_mx.py', '--ctx', str(ctx), '--nbatch', str(nchannel),
-                                      '--eps', str(eps), '--dtype', dtype, '--nrepeat', str(N_REPEAT)],
-                                     stderr=subprocess.PIPE,
-                                     stdout=subprocess.PIPE)
+                run_args = [PYTHON_EXE, 'layer_norm_mx.py', '--use_gpu', str(use_gpu), '--nbatch', str(nchannel),
+                            '--eps', str(eps), '--dtype', dtype, '--nrepeat', str(N_REPEAT)]
             elif codebase == 'pytorch':
-                ret = subprocess.run(
-                    [NVPROF_EXE, PYTHON_EXE, 'layer_norm_pytorch.py', '--ctx', str(ctx), '--nbatch', str(nchannel),
-                     '--eps', str(eps), '--dtype', dtype, '--nrepeat', str(N_REPEAT), '--apex'],
-                    stderr=subprocess.PIPE,
-                    stdout=subprocess.PIPE)
+                run_args = [PYTHON_EXE, 'layer_norm_pytorch.py', '--use_gpu', str(use_gpu), '--nbatch', str(nchannel),
+                            '--eps', str(eps), '--dtype', dtype, '--nrepeat', str(N_REPEAT)]
+            elif codebase == 'pytorch_apex':
+                run_args = [PYTHON_EXE, 'layer_norm_pytorch.py', '--use_gpu', str(use_gpu), '--nbatch', str(nchannel),
+                            '--eps', str(eps), '--dtype', dtype, '--nrepeat', str(N_REPEAT), '--apex']
             else:
                 raise NotImplementedError
+            if profile_nv:
+                run_args = [NVPROF_EXE] + run_args
+            ret = subprocess.run(run_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
             runfile_out = ret.stdout.decode('utf-8')
             fwd_time, bwd_time = re.match(LN_OUT_REG, runfile_out).groups()
             fwd_time = float(fwd_time)
@@ -51,5 +52,7 @@ def test_speed(codebase, test_batch_l, test_channel_l, eps, ctx, dtype, fwd_keyw
                 bwd_gamma_beta_runtime = sum(bwd_gamma_beta_runtime)
                 print(fwd_runtime, bwd_data_runtime, bwd_gamma_beta_runtime)
 
-test_speed('pytorch', TEST_BATCH_L, TEST_CHANNEL_L, EPS, CTX, DTYPE, MX_FWD_KEYWORD, MX_BWD_DATA_KEYWORD, MX_BWD_GAMMA_BETA_KEYWORD, profile_nv=True)
-test_speed('mxnet', TEST_BATCH_L, TEST_CHANNEL_L, EPS, CTX, DTYPE, MX_FWD_KEYWORD, MX_BWD_DATA_KEYWORD, MX_BWD_GAMMA_BETA_KEYWORD, profile_nv=True)
+
+test_speed('pytorch', TEST_BATCH_L, TEST_CHANNEL_L, EPS, USE_GPU, DTYPE, MX_FWD_KEYWORD, MX_BWD_DATA_KEYWORD, MX_BWD_GAMMA_BETA_KEYWORD, profile_nv=True)
+test_speed('pytorch_apex', TEST_BATCH_L, TEST_CHANNEL_L, EPS, USE_GPU, DTYPE, MX_FWD_KEYWORD, MX_BWD_DATA_KEYWORD, MX_BWD_GAMMA_BETA_KEYWORD, profile_nv=True)
+test_speed('mxnet', TEST_BATCH_L, TEST_CHANNEL_L, EPS, USE_GPU, DTYPE, MX_FWD_KEYWORD, MX_BWD_DATA_KEYWORD, MX_BWD_GAMMA_BETA_KEYWORD, profile_nv=True)
