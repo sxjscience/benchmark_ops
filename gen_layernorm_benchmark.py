@@ -91,7 +91,7 @@ def test_speed(codebase, test_batch_l, test_channel_l, eps, use_gpu, dtype, prof
                 nv_time_bwd_df.loc[nchannel, nbatch] = round(nv_bwd_time)
                 nv_time_bwd_data_df.loc[nchannel, nbatch] = round(nv_bwd_data_time)
                 nv_time_bwd_gamma_beta_df.loc[nchannel, nbatch] = round(nv_bwd_gamma_beta_time)
-    return py_time_fwd_df, py_time_bwd_df, nv_time_fwd_df, nv_time_bwd_data_df, nv_time_bwd_data_df, nv_time_bwd_gamma_beta_df
+    return py_time_fwd_df, py_time_bwd_df, nv_time_fwd_df, nv_time_bwd_df, nv_time_bwd_data_df, nv_time_bwd_gamma_beta_df
 
 
 # apex_py_fwd_time, apex_py_bwd_time, apex_nv_fwd_time, apex_nv_bwd_time, apex_nv_bwd_data_time, apex_nv_bwd_gamma_beta_time \
