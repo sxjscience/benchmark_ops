@@ -61,5 +61,5 @@ def test_speed(codebase, test_batch_l, test_channel_l, eps, use_gpu, dtype, prof
                 print(fwd_runtime, bwd_data_runtime, bwd_gamma_beta_runtime)
 
 
-test_speed('pytorch_apex', TEST_BATCH_L, TEST_CHANNEL_L, EPS, USE_GPU, DTYPE, MX_FWD_KEYWORD, MX_BWD_DATA_KEYWORD, MX_BWD_GAMMA_BETA_KEYWORD, profile_nv=True)
-test_speed('mxnet', TEST_BATCH_L, TEST_CHANNEL_L, EPS, USE_GPU, DTYPE, MX_FWD_KEYWORD, MX_BWD_DATA_KEYWORD, MX_BWD_GAMMA_BETA_KEYWORD, profile_nv=True)
+test_speed('pytorch_apex', TEST_BATCH_L, TEST_CHANNEL_L, EPS, USE_GPU, DTYPE, profile_nv=True)
+test_speed('mxnet', TEST_BATCH_L, TEST_CHANNEL_L, EPS, USE_GPU, DTYPE, profile_nv=True)
