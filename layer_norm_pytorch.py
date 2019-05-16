@@ -61,14 +61,15 @@ def check_ln_speed(use_apex, nbatch, nchannel, eps, nrepeat):
         layer = nn.LayerNorm(in_data.size()[1:], eps=eps)
     else:
         layer = FusedLayerNorm(in_data.size()[1:], eps=eps)
-    layer.cuda(device)
+    if args.use_gpu:
+        layer.cuda(device)
     if dtype == th.float16:
         layer.half()
     th.cuda.synchronize()
     fwd_time = 0
     bwd_time = 0
     for i in range(nrepeat):
-        in_data = th.randn(B, C, device=device, dtype=dtype)
+        in_data = th.randn(B, C, device=device, dtype=dtype, requires_grad=True)
         ograd = th.randn(B, C, device=device, dtype=dtype)
         npy_in_data = in_data.cpu().detach().numpy()
         gt_out = (npy_in_data - npy_in_data.mean(axis=-1, keepdims=True)) \
