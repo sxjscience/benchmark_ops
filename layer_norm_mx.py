@@ -138,13 +138,11 @@ def check_ln_speed(nbatch, nchannel, eps, nrepeat):
         mx_in_data_grad = in_data.grad.asnumpy()
         mx_gamma_grad = nd_gamma.grad.asnumpy()
         mx_beta_grad = nd_beta.grad.asnumpy()
-        npt.assert_allclose(mean_val.asnumpy()[:, 0], npy_in_data.mean(axis=-1), 1E-5, 1E-5)
-        npt.assert_allclose(std_val.asnumpy()[:, 0], np.sqrt(npy_in_data.var(axis=-1) + eps), 1E-5, 1E-5)
-        npt.assert_allclose(out_data.asnumpy(), gt_out, 1E-5, 1E-5)
+        npt.assert_allclose(mean_val.asnumpy()[:, 0], npy_in_data.mean(axis=-1), 1E-4, 1E-4)
+        npt.assert_allclose(std_val.asnumpy()[:, 0], np.sqrt(npy_in_data.var(axis=-1) + eps), 1E-4, 1E-4)
+        npt.assert_allclose(out_data.asnumpy(), gt_out, 1E-4, 1E-4)
         for i in range(B):
-            npt.assert_allclose(mx_in_data_grad[i, :], gt_in_data_grad[i, :], 1E-5, 1E-5)
-        # npt.assert_allclose(ln_layer.params.get('gamma').data().grad.asnumpy(), gt_gamma_grad, 1E-5, 1E-5)
-        # npt.assert_allclose(ln_layer.params.get('beta').data().grad.asnumpy(), gt_beta_grad, 1E-5, 1E-5)
+            npt.assert_allclose(mx_in_data_grad[i, :], gt_in_data_grad[i, :], 1E-4, 1E-4)
         npt.assert_allclose(mx_gamma_grad, gt_gamma_grad, 1E-3, 1E-3)
         npt.assert_allclose(mx_beta_grad, gt_beta_grad, 1E-3, 1E-3)
     if args.profile:
