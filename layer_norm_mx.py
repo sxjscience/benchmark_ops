@@ -28,7 +28,7 @@ parser.add_argument('--nchannel', default=1024, type=int, help='The number of ch
 parser.add_argument('--eps', default=1E-5, type=float, help='The eps of layer normalization')
 parser.add_argument('--nrepeat', default=5, type=int, help='Number to repeat the ')
 parser.add_argument('--dtype', default='float32', type=str, help='The data type to use')
-parser.add_argument('--profile', action='store_true', type=bool, help='Whether to profile the code using CProfile')
+parser.add_argument('--profile', action='store_true', help='Whether to profile the code using CProfile')
 
 
 
