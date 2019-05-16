@@ -67,20 +67,24 @@ def test_speed(codebase, test_batch_l, test_channel_l, eps, use_gpu, dtype, prof
             bwd_time = float(bwd_time)
             py_time_fwd_df.loc[nchannel, nbatch] = round(fwd_time, 1)
             py_time_bwd_df.loc[nchannel, nbatch] = round(bwd_time, 1)
-            print('{}, B={}, C={}, fwd={}, bwd={}'.format(codebase, nbatch, nchannel, fwd_time, bwd_time))
             if profile_nv:
                 nvprof_result = parse_nvprof_out(ret.stderr.decode('utf-8'))
-                _, fwd_runtime, _, _, _ = nvprof_result.fetch_run_time(keyword=fwd_keyword, unit='us')
-                fwd_runtime = sum(fwd_runtime)
-                _, bwd_data_runtime, _, _, _ = nvprof_result.fetch_run_time(keyword=bwd_data_keyword, unit='us')
-                bwd_data_runtime = sum(bwd_data_runtime)
-                _, bwd_gamma_beta_runtime, _, _, _ = nvprof_result.fetch_run_time(keyword=bwd_gamma_beta_keyword, unit='us')
-                bwd_gamma_beta_runtime = sum(bwd_gamma_beta_runtime)
-                total_bwd_runtime = bwd_data_runtime + bwd_gamma_beta_runtime
-                nv_time_fwd_df[nchannel, nbatch] = round(fwd_runtime, 1)
-                nv_time_bwd_df[nchannel, nbatch] = round(total_bwd_runtime, 1)
-                nv_time_bwd_data_df[nchannel, nbatch] = round(bwd_data_runtime, 1)
-                nv_time_bwd_gamma_beta_df[nchannel, nbatch] = round(bwd_gamma_beta_runtime, 1)
+                _, nv_fwd_time, _, _, _ = nvprof_result.fetch_run_time(keyword=fwd_keyword, unit='us')
+                nv_fwd_time = sum(nv_fwd_time)
+                _, nv_bwd_data_time, _, _, _ = nvprof_result.fetch_run_time(keyword=bwd_data_keyword, unit='us')
+                nv_bwd_data_time = sum(nv_bwd_data_time)
+                _, nv_bwd_gamma_beta_time, _, _, _ = nvprof_result.fetch_run_time(keyword=bwd_gamma_beta_keyword, unit='us')
+                nv_bwd_gamma_beta_time = sum(nv_bwd_gamma_beta_time)
+                nv_bwd_time = nv_bwd_data_time + nv_bwd_gamma_beta_time
+                print('{}, B={}, C={}, fwd={}, bwd={}, bwd_data={}, bwd_gamma_beta={}'.format(codebase, nbatch, nchannel,
+                                                                                              round(nv_fwd_time, 1),
+                                                                                              round(nv_bwd_time, 1),
+                                                                                              round(nv_bwd_data_time, 1),
+                                                                                              round(nv_bwd_gamma_beta_time, 1)))
+                nv_time_fwd_df.loc[nchannel, nbatch] = round(nv_fwd_time, 1)
+                nv_time_bwd_df.loc[nchannel, nbatch] = round(nv_bwd_time, 1)
+                nv_time_bwd_data_df.loc[nchannel, nbatch] = round(nv_bwd_data_time, 1)
+                nv_time_bwd_gamma_beta_df.loc[nchannel, nbatch] = round(nv_bwd_gamma_beta_time, 1)
     return py_time_fwd_df, py_time_bwd_df, nv_time_fwd_df, nv_time_bwd_data_df, nv_time_bwd_data_df, nv_time_bwd_gamma_beta_df
 
 
