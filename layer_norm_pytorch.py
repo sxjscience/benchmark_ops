@@ -91,9 +91,9 @@ def check_ln_speed(use_apex, nbatch, nchannel, eps, nrepeat):
                 bwd_time += time.time() - start
         npy_th_out_data = out_data.cpu().detach().numpy()
         if dtype != th.float16:
-            npt.assert_allclose(npy_th_out_data, gt_out.astype(dtype), 1E-4, 1E-4)
+            npt.assert_allclose(npy_th_out_data, gt_out.astype(args.dtype), 1E-4, 1E-4)
         else:
-            npt.assert_allclose(npy_th_out_data, gt_out.astype(dtype), 1E-2, 1E-2)
+            npt.assert_allclose(npy_th_out_data, gt_out.astype(args.dtype), 1E-2, 1E-2)
     return fwd_time / nrepeat * 1000000, bwd_time / nrepeat * 1000000
 fwd_time, bwd_time = check_ln_speed(args.apex, args.nbatch, args.nchannel, args.eps, args.nrepeat)
 
