@@ -71,7 +71,7 @@ def check_ln_speed(use_apex, nbatch, nchannel, eps, nrepeat):
     for i in range(nrepeat):
         in_data = th.randn(B, C, device=device, dtype=dtype, requires_grad=True)
         ograd = th.randn(B, C, device=device, dtype=dtype)
-        npy_in_data = in_data.cpu().detach().numpy()
+        npy_in_data = in_data.cpu().detach().numpy().astype(np.float64)
         gt_out = (npy_in_data - npy_in_data.mean(axis=-1, keepdims=True)) \
                  / np.sqrt(npy_in_data.var(axis=-1, keepdims=True) + eps)
         th.cuda.synchronize()
@@ -90,7 +90,10 @@ def check_ln_speed(use_apex, nbatch, nchannel, eps, nrepeat):
             if i > 0:
                 bwd_time += time.time() - start
         npy_th_out_data = out_data.cpu().detach().numpy()
-        npt.assert_allclose(npy_th_out_data, gt_out, 1E-5, 1E-5)
+        if dtype != th.float16:
+            npt.assert_allclose(npy_th_out_data, gt_out.astype(dtype), 1E-4, 1E-4)
+        else:
+            npt.assert_allclose(npy_th_out_data, gt_out.astype(dtype), 1E-2, 1E-2)
     return fwd_time / nrepeat * 1000000, bwd_time / nrepeat * 1000000
 fwd_time, bwd_time = check_ln_speed(args.apex, args.nbatch, args.nchannel, args.eps, args.nrepeat)
 
