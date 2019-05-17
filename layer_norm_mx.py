@@ -88,6 +88,8 @@ def npy_ln_grad(in_data, ograd, eps, gamma):
 
 
 def check_ln_speed(nbatch, nchannel, eps, nrepeat):
+    fwd_check_eps = 1E-2 if dtype == np.float16 else 1E-4
+    bwd_check_eps = 1E-2 if dtype == np.float16 else 1E-3
     B, C = nbatch, nchannel
     for _ in range(2):
         in_data = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
@@ -104,11 +106,11 @@ def check_ln_speed(nbatch, nchannel, eps, nrepeat):
         ograd = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
         nd_gamma = mx.nd.ones(shape=(C,), ctx=ctx, dtype=dtype)
         nd_beta = mx.nd.zeros(shape=(C,), ctx=ctx, dtype=dtype)
-        npy_in_data = in_data.asnumpy()
+        npy_in_data = in_data.asnumpy().astype(np.float64)
         gt_out = (npy_in_data - npy_in_data.mean(axis=-1, keepdims=True)) \
                  / np.sqrt(npy_in_data.var(axis=-1, keepdims=True) + eps)
         gt_in_data_grad, gt_gamma_grad, gt_beta_grad = \
-            npy_ln_grad(in_data.asnumpy(), ograd.asnumpy(), eps, nd_gamma.asnumpy())
+            npy_ln_grad(npy_in_data, ograd.asnumpy().astype(np.float64), eps, nd_gamma.asnumpy().astype(np.float64))
         mx.nd.waitall()
         in_data.attach_grad()
         nd_gamma.attach_grad()
@@ -138,13 +140,13 @@ def check_ln_speed(nbatch, nchannel, eps, nrepeat):
         mx_in_data_grad = in_data.grad.asnumpy()
         mx_gamma_grad = nd_gamma.grad.asnumpy()
         mx_beta_grad = nd_beta.grad.asnumpy()
-        npt.assert_allclose(mean_val.asnumpy()[:, 0], npy_in_data.mean(axis=-1), 1E-4, 1E-4)
-        npt.assert_allclose(std_val.asnumpy()[:, 0], np.sqrt(npy_in_data.var(axis=-1) + eps), 1E-4, 1E-4)
-        npt.assert_allclose(out_data.asnumpy(), gt_out, 1E-4, 1E-4)
+        npt.assert_allclose(mean_val.asnumpy()[:, 0], npy_in_data.mean(axis=-1).astype(dtype), fwd_check_eps, fwd_check_eps)
+        npt.assert_allclose(std_val.asnumpy()[:, 0], np.sqrt(npy_in_data.var(axis=-1) + eps).astype(dtype), fwd_check_eps, fwd_check_eps)
+        npt.assert_allclose(out_data.asnumpy(), gt_out.astype(dtype), fwd_check_eps, fwd_check_eps)
         for i in range(B):
-            npt.assert_allclose(mx_in_data_grad[i, :], gt_in_data_grad[i, :], 1E-4, 1E-4)
-        npt.assert_allclose(mx_gamma_grad, gt_gamma_grad, 1E-3, 1E-3)
-        npt.assert_allclose(mx_beta_grad, gt_beta_grad, 1E-3, 1E-3)
+            npt.assert_allclose(mx_in_data_grad[i, :], gt_in_data_grad[i, :].astype(dtype), fwd_check_eps, fwd_check_eps)
+        npt.assert_allclose(mx_gamma_grad, gt_gamma_grad.astype(dtype), bwd_check_eps, bwd_check_eps)
+        npt.assert_allclose(mx_beta_grad, gt_beta_grad.astype(dtype), bwd_check_eps, bwd_check_eps)
     if args.profile:
         profiler.set_state('stop')
     return fwd_time / nrepeat * 1000000, bwd_time / nrepeat * 1000000
@@ -152,6 +154,6 @@ def check_ln_speed(nbatch, nchannel, eps, nrepeat):
 fwd_time, bwd_time = check_ln_speed(args.nbatch, args.nchannel, args.eps, args.nrepeat)
 
 print('Forward: {}us, Backward: {}us'.format(fwd_time, bwd_time))
-if(args.profile):
+if args.profile:
     print(profiler.dumps())
     profiler.dump()
