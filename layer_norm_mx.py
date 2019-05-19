@@ -88,8 +88,8 @@ def npy_ln_grad(in_data, ograd, eps, gamma):
 
 
 def check_ln_speed(nbatch, nchannel, eps, nrepeat):
-    fwd_check_eps = 1E-2 if dtype == np.float16 else 1E-4
-    bwd_check_eps = 1E-2 if dtype == np.float16 else 1E-3
+    fwd_check_eps = 5E-2 if dtype == np.float16 else 1E-4
+    bwd_check_eps = 5E-2 if dtype == np.float16 else 1E-3
     B, C = nbatch, nchannel
     for _ in range(2):
         in_data = mx.nd.random.normal(shape=(B, C), ctx=ctx, dtype=dtype)
