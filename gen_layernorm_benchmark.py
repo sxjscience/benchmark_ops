@@ -18,6 +18,8 @@ MX_FWD_KEYWORD = 'LayerNormFusedForwardKernel'
 MX_BWD_DATA_KEYWORD = 'LayerNormFusedBackwardKernel_Data'
 MX_BWD_GAMMA_BETA_KEYWORD = ['LayerNormFusedBackwardKernel_PartGammaBeta', 'LayerNormFusedBackwardKernel_GammaBeta']
 
+MX_OLD_KEYWORD = ['op::broadcast::reduce_kernel', 'binary_broadcast_kernel',
+                      'mshadow_op3mul']
 
 def as_markdown_table(df):
     ret = ''
@@ -32,7 +34,8 @@ def as_markdown_table(df):
     return ret
 
 
-def test_speed(codebase, test_batch_l, test_channel_l, eps, use_gpu, dtype, profile_nv):
+def test_speed(codebase, test_batch_l, test_channel_l, eps, use_gpu, dtype, profile_nv,
+               profile_old=False):
     py_time_fwd_df = pd.DataFrame(columns=test_batch_l, index=test_channel_l)
     py_time_bwd_df = pd.DataFrame(columns=test_batch_l, index=test_channel_l)
     nv_time_fwd_df = pd.DataFrame(columns=test_batch_l, index=test_channel_l)
@@ -45,9 +48,14 @@ def test_speed(codebase, test_batch_l, test_channel_l, eps, use_gpu, dtype, prof
                 run_args = [PYTHON_EXE, 'layer_norm_mx.py', '--use_gpu', str(use_gpu), '--nbatch', str(nbatch),
                             '--nchannel', str(nchannel),
                             '--eps', str(eps), '--dtype', dtype, '--nrepeat', str(N_REPEAT)]
-                fwd_keyword = 'LayerNormFusedForwardKernel'
-                bwd_data_keyword = 'LayerNormFusedBackwardKernel_Data'
-                bwd_gamma_beta_keyword = ['LayerNormFusedBackwardKernel_PartGammaBeta', 'LayerNormFusedBackwardKernel_GammaBeta']
+                if profile_old:
+                    fwd_keyword = MX_OLD_KEYWORD
+                    bwd_data_keyword = MX_OLD_KEYWORD
+                    bwd_gamma_beta_keyword = MX_OLD_KEYWORD
+                else:
+                    fwd_keyword = 'LayerNormFusedForwardKernel'
+                    bwd_data_keyword = 'LayerNormFusedBackwardKernel_Data'
+                    bwd_gamma_beta_keyword = ['LayerNormFusedBackwardKernel_PartGammaBeta', 'LayerNormFusedBackwardKernel_GammaBeta']
             elif codebase == 'pytorch':
                 run_args = [PYTHON_EXE, 'layer_norm_pytorch.py', '--use_gpu', str(use_gpu), '--nbatch', str(nbatch),
                             '--nchannel', str(nchannel),
